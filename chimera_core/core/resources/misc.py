@@ -4,7 +4,7 @@ from typing import (
     Protocol,
 )
 from pydantic import SecretStr
-from xoa_driver import testers
+from xoa_driver.v2 import testers
 from .datasets import enums
 
 class IProps(Protocol):

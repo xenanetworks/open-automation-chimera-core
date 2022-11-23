@@ -10,7 +10,7 @@ from typing import (
 )
 from dataclasses import dataclass
 from xoa_driver import enums
-from xoa_driver import modules
+from xoa_driver.v2 import modules
 
 from chimera_core.core.utils import decorators
 from .port import PortModel

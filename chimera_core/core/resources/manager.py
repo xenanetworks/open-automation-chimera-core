@@ -9,7 +9,7 @@ from typing import (
     Any,
 )
 if TYPE_CHECKING:
-    from xoa_driver import testers
+    from xoa_driver.v2 import testers
     from chimera_core.core.generic_types import TMesagesPipe
 from .datasets.external.tester import TesterExternalModel
 

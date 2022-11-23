@@ -1,7 +1,10 @@
 import asyncio
-from chimera_core import controller, types
 
 from loguru import logger
+
+from chimera_core import controller, types
+from chimera_core.core.session.dataset import ModuleConfig
+
 
 # TODO: Allow Valkirye and Chimera testers to being connected
 # TODO: Only show Chimera modules in resources dataset
@@ -33,21 +36,28 @@ async def main():
     my_tester_info = my_tester_info[my_tester_credential.id]
 
     # "session" can be a different name which represents current actions under an resource
-    chimera_session = my_controller.start_session(my_tester_credential)
+    chimera_session = await my_controller.start_session(my_tester_credential)
 
     module = chimera_session.modules[0]
     module_current_config = await module.config.get()
-    await module.config.set(module_current_config)
+    logger.debug(module_current_config)
+
+    ######### ?? obj or params to update the config, need discuss ########
+
+    # update by params
+    await module.config.set(comment='hello')
+    module_current_config = await module.config.get()
+    logger.debug(module_current_config)
+
+    # update by obj
+    new_module_config = ModuleConfig(comment="world")
+    await module.config.set(new_module_config)
 
     p = module.ports[0]
     flow = p.flows[0]
     current_cfg = await flow.latency_jitter.get()
+    logger.debug(current_cfg)
 
-
-    ######### ?? obj or params to update the config, need discuss ########
-    await flow.latency_jitter.set(delay=20000)
-
-    current_cfg.delay = 2000
     new_cfg = Config(delay=10000)
     await flow.latency_jitter.set(new_cfg)
 

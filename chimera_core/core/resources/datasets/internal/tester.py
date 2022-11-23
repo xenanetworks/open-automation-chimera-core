@@ -13,7 +13,7 @@ from pydantic import (
 )
 from dataclasses import dataclass, field
 if TYPE_CHECKING:
-    from xoa_driver import testers
+    from xoa_driver.v2 import testers
 from xoa_driver import utils
 from chimera_core.core.utils import decorators
 from chimera_core.core.resources.datasets import enums

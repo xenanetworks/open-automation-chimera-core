@@ -1,6 +1,8 @@
 import os
 import typing
 
+from loguru import logger
+
 from chimera_core.core.session.session import Session
 
 from .core.messenger.handler import OutMessagesHandler
@@ -67,7 +69,7 @@ class MainController:
         await self.__resources.remove_tester(tester_id)
 
 
-    def start_session(self, credentials: "credentials.Credentials", username: str = "chimera_core") -> "Session":
+    async def start_session(self, credentials: "credentials.Credentials", username: str = "chimera_core") -> "Session":
         ids = [credentials.id]
-        tester_instance = self.__resources.get_testers_by_id(testers_ids=ids, username=username)[credentials.id]
+        tester_instance = await self.__resources.get_testers_by_id(testers_ids=ids, username=username)[credentials.id]
         return Session(tester_instance)
