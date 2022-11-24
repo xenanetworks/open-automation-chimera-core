@@ -64,7 +64,6 @@ class OutMessagesHandler:
 
     async def changes(self, *names: str, _filter: Optional[Set["misc.EMsgType"]] = None) -> AsyncGenerator[misc.Message, None]:
         if not all((self.__pipes.get(name) for name in names)):
-            logger.debug('exit')
             return
         msg_queue: asyncio.Queue[Optional["misc.Message"]] = asyncio.Queue()
         async with self.__user_stream(msg_queue, *names):

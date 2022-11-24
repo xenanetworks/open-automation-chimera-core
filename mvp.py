@@ -1,6 +1,9 @@
 import asyncio
+from chimera_core.core.session.module import ModuleHandler
 
 from loguru import logger
+
+from xoa_driver import enums
 
 from chimera_core import controller, types
 from chimera_core.core.session.dataset import ModuleConfig
@@ -38,7 +41,7 @@ async def main():
     # "session" can be a different name which represents current actions under an resource
     chimera_session = await my_controller.start_session(my_tester_credential)
 
-    module = chimera_session.modules[0]
+    module = await chimera_session.modules[0]
     module_current_config = await module.config.get()
     logger.debug(module_current_config)
 
@@ -53,20 +56,21 @@ async def main():
     new_module_config = ModuleConfig(comment="world")
     await module.config.set(new_module_config)
 
-    p = module.ports[0]
-    flow = p.flows[0]
+    port = await module.ports[0]
+    flow = port.flows[1]
     current_cfg = await flow.latency_jitter.get()
     logger.debug(current_cfg)
-
-    new_cfg = Config(delay=10000)
-    await flow.latency_jitter.set(new_cfg)
-
+    await flow.latency_jitter.set(constant_delay=100000000)
     # # ... all other flow methods
+    await flow.shadow_filter.set()
+    await flow.shadow_filter.enable(True)
     await flow.latency_jitter.enable(True)
+    await flow.drop.set()
+    await flow.drop.enable(True)
 
-    chimera_session.fetch_statistics(p, use=True) # Add port for fetching statistics data from it
-    chimera_session.fetch_statistics(p, use=False) # remove port from fetching of the statistics
-    chimera_session.uselect_all_ports_from_statistics() # ?? need better name
+    # chimera_session.fetch_statistics(p, use=True) # Add port for fetching statistics data from it
+    # chimera_session.fetch_statistics(p, use=False) # remove port from fetching of the statistics
+    # chimera_session.uselect_all_ports_from_statistics() # ?? need better name
 
 if __name__ == '__main__':
     loop = asyncio.new_event_loop()

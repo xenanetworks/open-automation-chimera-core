@@ -1,11 +1,12 @@
 import asyncio
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional
-from chimera_core.core.session.port import PortHandler, PortHandlerManager
-from chimera_core.core.utils.helper import reserve_modules_ports
+from typing import TYPE_CHECKING, Generator, List, Optional
 
 from xoa_driver import enums
+from loguru import logger
 
+from chimera_core.core.session.port import PortHandler, PortHandlerManager
+from chimera_core.core.utils.helper import reserve_modules_ports
 from chimera_core.core.session.dataset import ModuleConfig
 
 if TYPE_CHECKING:
@@ -42,13 +43,20 @@ class ModuleConfigurationHandler:
 
 
 
+
 class ModuleHandler:
     def __init__(self, module: "ModuleChimera") -> None:
         self.module_instance = module
         self.config = ModuleConfigurationHandler(module)
         self.ports = PortHandlerManager([PortHandler(p) for p in self.module_instance.ports])
 
+    async def setup(self) -> "ModuleHandler":
+        logger.debug('called')
+        await reserve_modules_ports(self.module_instance)
+        return self
 
+    def __await__(self) -> Generator[None, None, "ModuleHandler"]:
+        return self.setup().__await__()
 
 @dataclass
 class ModuleHandlerManager:

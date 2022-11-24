@@ -11,7 +11,7 @@ class ModuleConfig(BaseModel):
 
 
 class LatencyJitterConfigDistribution(BaseModel):
-    constant_delay: Optional[float] = None
+    constant_delay: Optional[int] = None
 
 
 class LatencyJitterConfigSchedule(BaseModel):
@@ -20,5 +20,5 @@ class LatencyJitterConfigSchedule(BaseModel):
 
 class LatencyJitterConfigMain(BaseModel):
     distribution: LatencyJitterConfigDistribution
-    schedule: LatencyJitterConfigSchedule
-    # ??? status is_enable?
+    schedule: Optional[LatencyJitterConfigSchedule] = None
+    enable: Optional[bool] = None

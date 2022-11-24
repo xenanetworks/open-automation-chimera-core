@@ -69,7 +69,7 @@ class MesagesPipe:
             type=msg_type,
             payload=msg
         )
-        logger.debug(message)
+        # logger.debug(message)
         self.__queue.put_nowait(message)
 
     def get_facade(self) -> misc.PipeFacade:

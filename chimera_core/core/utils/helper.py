@@ -7,13 +7,12 @@ from loguru import logger
 
 
 async def reserve_modules_ports(*resources: Union[ports.GenericAnyPort, modules.ModuleChimera]) -> None:
-    async def relinquish(port: Union[ports.GenericAnyPort, modules.ModuleChimera]):
-        logger.debug(enums.ReservedStatus(port.info.reservation) is enums.ReservedStatus.RESERVED_BY_OTHER)
-        if enums.ReservedStatus(port.info.reservation) == enums.ReservedStatus.RESERVED_BY_OTHER:
-            await port.reservation.set_relinquish()
-            while enums.ReservedStatus(port.info.reservation) != enums.ReservedStatus.RELEASED:
-                await asyncio.sleep(0.01)
-    await asyncio.gather(*[ relinquish(port) for port in resources ])
+    async def relinquish(resource: Union[ports.GenericAnyPort, modules.ModuleChimera]):
+        logger.debug(resource)
+        while enums.ReservedStatus(resource.info.reservation) != enums.ReservedStatus.RELEASED:
+            await resource.reservation.set_relinquish()
+            await asyncio.sleep(0.01)
+    await asyncio.gather(*[ relinquish(r) for r in resources if  r.info.reservation != enums.ReservedStatus.RESERVED_BY_YOU])
 
     tokens = []
     for res in resources:
@@ -21,7 +20,7 @@ async def reserve_modules_ports(*resources: Union[ports.GenericAnyPort, modules.
             continue
 
         tokens.append(res.reservation.set_reserve())
-        logger.debug(res)
+        logger.debug(res.info.reserved_by)
         if isinstance(res, ports.BasePortL23):
             res.reset.set()
 
