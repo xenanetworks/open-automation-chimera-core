@@ -4,6 +4,9 @@ from pydantic import BaseModel
 from xoa_driver import enums
 
 
+INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
+
+
 class ModuleConfig(BaseModel):
     comment: Optional[str] = None
     tx_clock_source: Optional[enums.TXClockSource] = None
@@ -17,6 +20,7 @@ class LatencyJitterConfigDistribution(BaseModel):
 class LatencyJitterConfigSchedule(BaseModel):
     duration: Optional[int] = None
     period: Optional[int] = None
+
 
 class LatencyJitterConfigMain(BaseModel):
     distribution: LatencyJitterConfigDistribution

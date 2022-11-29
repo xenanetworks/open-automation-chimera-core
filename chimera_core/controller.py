@@ -1,36 +1,40 @@
 import os
-import typing
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Set, Type, TypeVar, Union
 
 from loguru import logger
+from xoa_driver.v2.testers import L23Tester
+from xoa_driver.v2.modules import ModuleChimera
 
-from chimera_core.core.session.session import Session
+from chimera_core.core.manager.tester import TesterManager
+
 
 from .core.messenger.handler import OutMessagesHandler
 from .core.resources.manager import ResourcesManager, AllTesterTypes
-
 from .core import const
 
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from .types import EMsgType
     from .core.resources.datasets.external import credentials
 
-T = typing.TypeVar("T", bound="MainController")
+
+T = TypeVar("T", bound="MainController")
+
 
 class MainController:
     """MainController - A main class of XOA-Core framework."""
 
-    __slots__ = ("__publisher", "__resources", "suites_library", "__execution_manager")
+    __slots__ = ("__publisher", "__resources", "suites_library", "__testers")
 
-    def __init__(self, *, storage_path: typing.Optional[str] = None, mono: bool = False) -> None:
+    def __init__(self, *, storage_path: Optional[str] = None, mono: bool = False) -> None:
         __storage_path = os.path.join(os.getcwd(), "store") if not storage_path else storage_path
 
         self.__publisher = OutMessagesHandler()
         resources_pipe = self.__publisher.get_pipe(const.PIPE_RESOURCES)
         self.__resources = ResourcesManager(resources_pipe, __storage_path)
+        self.__testers: Dict[str, L23Tester] = {}
 
-
-    def listen_changes(self, *names: str, _filter: typing.Optional[typing.Set["EMsgType"]] = None):
+    def listen_changes(self, *names: str, _filter: Optional[Set["EMsgType"]] = None):
         """Subscribe to the messages from different subsystems and test-suites."""
         return self.__publisher.changes(*names, _filter=_filter)
 
@@ -41,8 +45,7 @@ class MainController:
         await self.__resources
         return self
 
-
-    async def list_testers(self) -> typing.Dict[str, "AllTesterTypes"]:
+    async def list_testers(self) -> Dict[str, "AllTesterTypes"]:
         """List the added testers.
 
         :return: list of testers
@@ -68,8 +71,16 @@ class MainController:
         """
         await self.__resources.remove_tester(tester_id)
 
+    async def use(self, credentials: "credentials.Credentials", username: str = "chimera_core", reserve: bool = False) -> "TesterManager":
+        if not (tester_instance := self.__testers.get(username)):
+            tester_instance = await self.__resources.get_testers_by_id(
+                testers_ids=[credentials.id],
+                username=username,
+            )[credentials.id]
 
-    async def start_session(self, credentials: "credentials.Credentials", username: str = "chimera_core") -> "Session":
-        ids = [credentials.id]
-        tester_instance = await self.__resources.get_testers_by_id(testers_ids=ids, username=username)[credentials.id]
-        return Session(tester_instance)
+            assert isinstance(tester_instance, L23Tester), 'Invalid tester.'
+            if not any(isinstance(module, ModuleChimera) for module in tester_instance.modules):
+                raise ValueError("The tester do not have chimera module on it.")
+            self.__testers[username] = tester_instance
+
+        return TesterManager(tester_instance, reserve=reserve)

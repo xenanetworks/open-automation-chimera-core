@@ -1,16 +1,15 @@
 import asyncio
-from chimera_core.core.session.module import ModuleHandler
+from chimera_core.core.manager.module import ModuleManager
 
 from loguru import logger
 
 from xoa_driver import enums
 
 from chimera_core import controller, types
-from chimera_core.core.session.dataset import ModuleConfig
+from chimera_core.core.manager.dataset import ModuleConfig
 
 
 # TODO: Allow Valkirye and Chimera testers to being connected
-# TODO: Only show Chimera modules in resources dataset
 # TODO: To create functions of configurring
 
 TESTER_IP_ADDRESS = '192.168.1.201'
@@ -38,35 +37,32 @@ async def main():
     my_tester_info = await my_controller.list_testers()
     my_tester_info = my_tester_info[my_tester_credential.id]
 
-    # "session" can be a different name which represents current actions under an resource
-    chimera_session = await my_controller.start_session(my_tester_credential)
+    tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False)
+    await tester_manager.reserve_if_not()
+    module = await tester_manager.use_module(0, reserve=True)
+    port = await tester_manager.use_port(module_id=0, port_id=0, reserve=True)
+    await port.reserve_if_not()
 
-    module = await chimera_session.modules[0]
+    # read current config
     module_current_config = await module.config.get()
     logger.debug(module_current_config)
 
-    ######### ?? obj or params to update the config, need discuss ########
+    # update config
+    module_current_config.comment = 'world'
+    await module.config.set(module_current_config)
 
-    # update by params
-    await module.config.set(comment='hello')
-    module_current_config = await module.config.get()
-    logger.debug(module_current_config)
-
-    # update by obj
-    new_module_config = ModuleConfig(comment="world")
-    await module.config.set(new_module_config)
-
-    port = await module.ports[0]
     flow = port.flows[1]
     current_cfg = await flow.latency_jitter.get()
     logger.debug(current_cfg)
-    await flow.latency_jitter.set(constant_delay=100000000)
-    # # ... all other flow methods
-    await flow.shadow_filter.set()
-    await flow.shadow_filter.enable(True)
-    await flow.latency_jitter.enable(True)
-    await flow.drop.set()
-    await flow.drop.enable(True)
+
+    # await flow.latency_jitter.set(constant_delay=100000000)
+    # # # ... all other flow methods
+    # await flow.shadow_filter.set()
+    # await flow.shadow_filter.enable(True)
+    # await flow.latency_jitter.enable(True)
+    # await flow.drop.set()
+    # await flow.drop.enable(True)
+
 
     # chimera_session.fetch_statistics(p, use=True) # Add port for fetching statistics data from it
     # chimera_session.fetch_statistics(p, use=False) # remove port from fetching of the statistics

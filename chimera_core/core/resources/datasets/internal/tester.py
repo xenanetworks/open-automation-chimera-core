@@ -37,8 +37,9 @@ class TesterModel:
     max_comment_len: int = 0 # used by UI validation (Tester Description) & config validation
     max_password_len: int = 0 # used by UI validation (Tester Password) & config validation
 
-    async def on_evt_reserved_by(self, _, value) -> None:
-        self.reserved_by = value.username
+    async def on_evt_reserved_by(self, response) -> None:
+        print(response)
+        self.reserved_by = response.values.username
 
     async def on_evt_disconnected(self, *_) -> None:
         self.is_connected = False

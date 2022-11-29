@@ -1,18 +1,24 @@
 import asyncio
 from typing import Union
+from chimera_core.core.manager.dataset import INTERVEL_CHECK_RESERVE_RESOURCE
 from xoa_driver import enums, utils
-from xoa_driver.v2 import modules, ports
+from xoa_driver.v2.testers import L23Tester
+from xoa_driver.v2.modules import ModuleChimera
+from xoa_driver.v2.ports import PortChimera
 
 from loguru import logger
 
 
-async def reserve_modules_ports(*resources: Union[ports.GenericAnyPort, modules.ModuleChimera]) -> None:
-    async def relinquish(resource: Union[ports.GenericAnyPort, modules.ModuleChimera]):
+TypeResouces = Union[L23Tester, ModuleChimera, PortChimera]
+
+
+async def reserve_resources(*resources: TypeResouces) -> None:
+    async def relinquish(resource: TypeResouces):
         logger.debug(resource)
         while enums.ReservedStatus(resource.info.reservation) != enums.ReservedStatus.RELEASED:
             await resource.reservation.set_relinquish()
-            await asyncio.sleep(0.01)
-    await asyncio.gather(*[ relinquish(r) for r in resources if  r.info.reservation != enums.ReservedStatus.RESERVED_BY_YOU])
+            await asyncio.sleep(INTERVEL_CHECK_RESERVE_RESOURCE)
+    await asyncio.gather(*[relinquish(r) for r in resources if r.info.reservation != enums.ReservedStatus.RESERVED_BY_YOU])
 
     tokens = []
     for res in resources:
@@ -21,7 +27,7 @@ async def reserve_modules_ports(*resources: Union[ports.GenericAnyPort, modules.
 
         tokens.append(res.reservation.set_reserve())
         logger.debug(res.info.reserved_by)
-        if isinstance(res, ports.BasePortL23):
+        if isinstance(res, PortChimera):
             res.reset.set()
 
     await utils.apply(*tokens)

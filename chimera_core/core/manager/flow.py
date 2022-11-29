@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, TYPE_CHECKING
 
-from chimera_core.core.session.Impairment import LatencyJitterHandler, DropHandler, ShaowFilterHandler
+from chimera_core.core.manager.impairment import LatencyJitterHandler, DropHandler, ShaowFilterHandler
 
 if TYPE_CHECKING:
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CFlow

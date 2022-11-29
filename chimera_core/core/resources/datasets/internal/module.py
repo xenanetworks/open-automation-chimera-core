@@ -31,8 +31,8 @@ class ModuleModel:
     max_clock_ppm: Optional[int] = None # used by UI validation (Test Module Config - Local Clock Adjustment) & config validation
 
 
-    async def on_evt_reserved_by(self, _, value) -> None:
-        self.reserved_by = value.username
+    async def on_evt_reserved_by(self, values) -> None:
+        self.reserved_by = values.username
 
     @classmethod
     async def from_module(cls: Type[M], module: "modules.GenericAnyModule", notifier: Callable) -> M:

@@ -4,7 +4,7 @@ from loguru import logger
 from xoa_driver import utils, enums
 from xoa_driver.v2 import misc
 
-from chimera_core.core.session.dataset import LatencyJitterConfigDistribution, LatencyJitterConfigMain, LatencyJitterConfigSchedule
+from .dataset import LatencyJitterConfigDistribution, LatencyJitterConfigMain, LatencyJitterConfigSchedule
 
 if TYPE_CHECKING:
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
@@ -14,7 +14,6 @@ if TYPE_CHECKING:
 class LatencyJitterHandler:
     def __init__(self, impairment: "CLatencyJitterImpairment"):
         self.impairment = impairment
-
 
     async def get(self) -> LatencyJitterConfigMain:
         enable, schedule = await utils.apply(
