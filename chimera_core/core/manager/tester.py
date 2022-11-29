@@ -11,13 +11,10 @@ from .port import PortManager
 
 
 class TesterManager(ReserveMixin):
-    def __init__(self, tester: L23Tester, reserve: bool = False) -> None:
+    def __init__(self, tester: L23Tester) -> None:
         self.resource_instance: L23Tester = tester
-        self._reserve = reserve
 
     async def setup(self) -> "TesterManager":
-        if self._reserve:
-            await self.reserve_if_not()
         return self
 
     def __await__(self) -> Generator[None, None, "TesterManager"]:
@@ -29,12 +26,18 @@ class TesterManager(ReserveMixin):
             raise ValueError('Chimera Module Only')
         return module
 
-    def use_module(self, module_id: int, reserve: bool = False) -> "ModuleManager":
-        return ModuleManager(self._obtain_module(module_id), reserve=reserve)
+    async def use_module(self, module_id: int, reserve: bool = False) -> "ModuleManager":
+        manager = ModuleManager(self._obtain_module(module_id))
+        if reserve:
+            await manager.reserve_if_not()
+        return manager
 
-    def use_port(self, module_id: int, port_id: int, reserve: bool = False) -> PortManager:
+    async def use_port(self, module_id: int, port_id: int, reserve: bool = False) -> PortManager:
         module = self._obtain_module(module_id)
         port = module.ports.obtain(port_id)
         if not isinstance(port, PortChimera):
             raise ValueError('Chimera Port Only')
-        return PortManager(port, reserve=reserve)
+        manager = PortManager(port)
+        if reserve:
+            await manager.reserve_if_not()
+        return manager

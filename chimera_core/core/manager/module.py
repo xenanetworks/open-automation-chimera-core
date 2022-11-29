@@ -33,14 +33,11 @@ class ModuleConfigurator:
 
 
 class ModuleManager(ReserveMixin):
-    def __init__(self, module: "ModuleChimera", reserve: bool = False) -> None:
+    def __init__(self, module: "ModuleChimera") -> None:
         self.resource_instance = module
         self.config = ModuleConfigurator(module)
-        self._reserve = reserve
 
     async def setup(self) -> "ModuleManager":
-        if self._reserve:
-            await self.reserve_if_not()
         return self
 
     def __await__(self) -> Generator[None, None, "ModuleManager"]:

@@ -83,4 +83,7 @@ class MainController:
                 raise ValueError("The tester do not have chimera module on it.")
             self.__testers[username] = tester_instance
 
-        return TesterManager(tester_instance, reserve=reserve)
+        manager = TesterManager(tester_instance)
+        if reserve:
+            await manager.reserve_if_not()
+        return manager
