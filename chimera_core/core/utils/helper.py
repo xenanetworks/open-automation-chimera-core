@@ -13,7 +13,7 @@ TypeResouces = Union[L23Tester, ModuleChimera, PortChimera]
 
 
 async def reserve_resources(*resources: TypeResouces) -> None:
-    async def relinquish(resource: TypeResouces):
+    async def relinquish(resource: TypeResouces) -> None:
         logger.debug(resource)
         while enums.ReservedStatus(resource.info.reservation) != enums.ReservedStatus.RELEASED:
             await resource.reservation.set_relinquish()

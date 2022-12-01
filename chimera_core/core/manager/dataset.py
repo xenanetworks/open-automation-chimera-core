@@ -1,10 +1,27 @@
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel
 from xoa_driver import enums
 
 
 INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
+
+
+class PortConfigLinkFlap(BaseModel):
+    enable: bool = True
+    duration: int = 100
+    repeat_period: int = 10000
+    repetition: int = 0
+
+
+class PortConfig(BaseModel):
+    comment: str = ''
+    tx_enable: bool = True
+    emulate: bool = False
+    tpld_mode: enums.TPLDMode = enums.TPLDMode.NORMAL
+    fcs_error_mode: enums.OnOff = enums.OnOff.OFF
+
+    # impairment: Optional[Union[PortConfigLinkFlap]] = None
 
 
 class ModuleConfig(BaseModel):

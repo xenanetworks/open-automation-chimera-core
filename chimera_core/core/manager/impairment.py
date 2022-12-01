@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 
 
-class LatencyJitterHandler:
+class LatencyJitter:
     def __init__(self, impairment: "CLatencyJitterImpairment"):
         self.impairment = impairment
 
@@ -57,7 +57,7 @@ class DropHandler:
         await self.impairment.enable.set(enums.OnOff(b))
 
 
-class ShaowFilterHandler:
+class ShaowFilter:
     def __init__(self, filter: "FilterDefinitionShadow"):
         self.filter = filter
 
