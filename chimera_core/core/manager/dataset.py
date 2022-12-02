@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional
 
 from pydantic import BaseModel
 from xoa_driver import enums
@@ -7,21 +7,31 @@ from xoa_driver import enums
 INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
 
 
-class PortConfigLinkFlap(BaseModel):
-    enable: bool = True
+class PortConfigPcsPmaBase(BaseModel):
+    enable: enums.OnOff = enums.OnOff.OFF
     duration: int = 100
-    repeat_period: int = 10000
+    period: int = 10000
     repetition: int = 0
+
+
+class PortConfigLinkFlap(PortConfigPcsPmaBase):
+    pass
+
+
+class PortConfigPulseError(PortConfigPcsPmaBase):
+    coeff: int = 1
+    exp: int = -4
 
 
 class PortConfig(BaseModel):
     comment: str = ''
-    tx_enable: bool = True
+    enable_tx: bool = True
+    autoneg_selection: bool = False
     emulate: bool = False
     tpld_mode: enums.TPLDMode = enums.TPLDMode.NORMAL
     fcs_error_mode: enums.OnOff = enums.OnOff.OFF
-
-    # impairment: Optional[Union[PortConfigLinkFlap]] = None
+    link_flap: PortConfigLinkFlap = PortConfigLinkFlap()
+    pulse_error: PortConfigPulseError = PortConfigPulseError()
 
 
 class ModuleConfig(BaseModel):
