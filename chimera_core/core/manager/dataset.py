@@ -25,9 +25,17 @@ class PortConfig(BaseModel):
 
 
 class ModuleConfig(BaseModel):
-    comment: Optional[str] = None
-    tx_clock_source: Optional[enums.TXClockSource] = None
-    tx_clock_status: Optional[enums.TXClockStatus] = None
+    comment: str = ''
+    timing_source: enums.TimingSource = enums.TimingSource.CHASSIS
+    clock_ppb: int = 1
+    tx_clock_source: enums.TXClockSource = enums.TXClockSource.MODULELOCALCLOCK
+    tx_clock_status: enums.TXClockStatus = enums.TXClockStatus.OK
+    latency_mode: enums.ImpairmentLatencyMode = enums.ImpairmentLatencyMode.NORMAL
+    cfp_type: enums.MediaCFPType = enums.MediaCFPType.CFP_UNKNOWN
+    cfp_state: enums.MediaCFPState = enums.MediaCFPState.NOT_CFP
+    port_count: int = 0
+    port_speed: int = 0
+    bypass_mode: enums.OnOff = enums.OnOff.OFF
 
 
 class LatencyJitterConfigDistribution(BaseModel):

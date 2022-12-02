@@ -1,11 +1,11 @@
 import asyncio
 from typing import TYPE_CHECKING, Generator, List, Optional
-from chimera_core.core.manager.base import ReserveMixin
 
-from xoa_driver import enums
 from loguru import logger
+from xoa_driver import enums
+from xoa_driver.utils import apply as driver_apply
 
-from chimera_core.core.utils.helper import reserve_resources
+from chimera_core.core.manager.base import ReserveMixin
 from .dataset import ModuleConfig
 
 if TYPE_CHECKING:
@@ -17,15 +17,29 @@ class ModuleConfigurator:
         self.module = module
 
     async def get(self) -> ModuleConfig:
-        comment, tx_clock_source, tx_clock_status = await asyncio.gather(*(
-            self.module.comment.get(),
-            self.module.tx_clock.source.get(),
-            self.module.tx_clock.status.get(),
-        ))
+        comment, clock_ppb, tx_clock_source, tx_clock_status, latency_mode, \
+            cfp_type, cfp_config, bypass_mode = await asyncio.gather(*(
+                self.module.comment.get(),
+                self.module.clock_ppb.get(),
+                self.module.tx_clock.source.get(),
+                self.module.tx_clock.status.get(),
+                self.module.latency_mode.get(),
+                self.module.cfp.type.get(),
+                self.module.cfp.config.get(),
+                self.module.bypass_mode.get(),
+            ))
+
         return ModuleConfig(
             comment=comment.comment,
+            clock_ppb=clock_ppb.ppb,
             tx_clock_source=enums.TXClockSource(tx_clock_source.tx_clock),
             tx_clock_status=enums.TXClockStatus(tx_clock_status.status),
+            latency_mode=enums.ImpairmentLatencyMode(latency_mode.mode),
+            cfp_type=enums.MediaCFPType(cfp_type.type),
+            cfp_state=enums.MediaCFPState(cfp_type.state),
+            port_count=cfp_config.port_count,
+            port_speed=cfp_config.port_speed,
+            bypass_mode=enums.OnOff(bypass_mode.on_off),
         )
 
     async def set(self, config: ModuleConfig) -> None:
