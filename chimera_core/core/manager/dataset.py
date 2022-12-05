@@ -27,7 +27,7 @@ class PortConfig(BaseModel):
     comment: str = ''
     enable_tx: bool = True
     autoneg_selection: bool = False
-    emulate: bool = False
+    emulate: enums.OnOff = enums.OnOff.OFF
     tpld_mode: enums.TPLDMode = enums.TPLDMode.NORMAL
     fcs_error_mode: enums.OnOff = enums.OnOff.OFF
     link_flap: PortConfigLinkFlap = PortConfigLinkFlap()
@@ -61,3 +61,11 @@ class LatencyJitterConfigMain(BaseModel):
     distribution: LatencyJitterConfigDistribution
     schedule: Optional[LatencyJitterConfigSchedule] = None
     enable: Optional[bool] = None
+
+
+class ShadowFilterConfigBasicEthernet(BaseModel):
+    use: enums.OnOff = enums.OnOff.OFF
+
+
+class ShadowFilterConfigBasic(BaseModel):
+    ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()

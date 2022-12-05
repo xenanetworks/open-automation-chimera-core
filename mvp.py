@@ -38,26 +38,39 @@ async def main():
     my_tester_info = my_tester_info[my_tester_credential.id]
 
     tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False)
-    await tester_manager.reserve_if_not()
-    module = await tester_manager.use_module(0, reserve=True)
-    port = await tester_manager.use_port(module_id=0, port_id=0, reserve=True)
-    await port.reserve_if_not()
+    module = await tester_manager.use_module(0, reserve=False)
+    port = await tester_manager.use_port(module_id=0, port_id=0, reserve=False)
 
     # read current config
     module_current_config = await module.config.get()
-    logger.debug(module_current_config)
+    logger.debug(module_current_config.comment)
+    await module.reserve_if_not()
+    module_current_config.comment = 'hello'
+    await module.config.set(module_current_config)
+    module_current_config = await module.config.get()
+    logger.debug(module_current_config.comment)
 
     # update config
-    module_current_config.comment = 'world'
-    await module.config.set(module_current_config)
+    # module_current_config.comment = 'world'
+    # await module.config.set(module_current_config)
+
+    port_config = await port.config.get()
+    logger.debug(port_config)
+    await port.reserve_if_not()
+    port_config.emulate = enums.OnOff.ON
+    await port.config.set(port_config)
 
     flow = port.flows[1]
     current_cfg = await flow.latency_jitter.get()
     logger.debug(current_cfg)
 
-    # await flow.latency_jitter.set(constant_delay=100000000)
+    await flow.shadow_filter.reset()
     # # # ... all other flow methods
-    # await flow.shadow_filter.set()
+    basic_config = await flow.shadow_filter.use_basic_mode()
+    current_filter_config = await basic_config.get()
+    current_filter_config.ethernet
+
+    await flow.shadow_filter.set()
     # await flow.shadow_filter.enable(True)
     # await flow.latency_jitter.enable(True)
     # await flow.drop.set()

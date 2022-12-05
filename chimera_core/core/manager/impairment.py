@@ -4,12 +4,13 @@ from loguru import logger
 from xoa_driver import utils, enums
 from xoa_driver.v2 import misc
 
-from .dataset import LatencyJitterConfigDistribution, LatencyJitterConfigMain, LatencyJitterConfigSchedule
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
+
+from .dataset import LatencyJitterConfigDistribution, LatencyJitterConfigMain, LatencyJitterConfigSchedule, ShadowFilterConfigBasic
 
 if TYPE_CHECKING:
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
-
 
 class LatencyJitter:
     def __init__(self, impairment: "CLatencyJitterImpairment"):
@@ -57,16 +58,26 @@ class DropHandler:
         await self.impairment.enable.set(enums.OnOff(b))
 
 
-class ShaowFilter:
+class ShadowFilterConfiguratorBasic:
+    def __init__(self, filter_: "FilterDefinitionShadow", basic_mode: "ModeBasic"):
+        self.filter = filter_
+        self.basic_mode = basic_mode
+
+    async def get(self) -> ShadowFilterConfigBasic:
+        return ShadowFilterConfigBasic()
+
+
+class ShadowFilterManager:
     def __init__(self, filter: "FilterDefinitionShadow"):
         self.filter = filter
 
+    async def reset(self) -> None:
+        await self.filter.initiating.set()
+
     async def set(self):
         await self.filter.initiating.set()
-        await self.filter.use_basic_mode()
         filter = await self.filter.get_mode()
-
-            # Set up the filter to impair frames with VLAN Tag = 20 (using command grouping)
+        # Set up the filter to impair frames with VLAN Tag = 20 (using command grouping)
         if isinstance(filter, misc.BasicImpairmentFlowFilter):
             await utils.apply(
                 filter.ethernet.settings.set(use=enums.FilterUse.OFF, action=enums.InfoAction.INCLUDE),
@@ -80,6 +91,14 @@ class ShaowFilter:
                 filter.vlan.outer.pcp.set(use=enums.OnOff.OFF, value=0, mask="0x07"),
             )
 
-    async def enable(self, b: bool) -> None:
-        await self.filter.enable.set_on()
-        await self.filter.apply.set()
+    async def use_basic_mode(self) -> "ShadowFilterConfiguratorBasic":
+        await self.filter.use_basic_mode()
+        mode = await self.filter.get_mode()
+        if not isinstance(mode, ModeBasic):
+            raise ValueError("Not base mode")
+        return ShadowFilterConfiguratorBasic(self.filter, mode)
+
+    async def enable(self, state: bool) -> None:
+        await self.filter.enable.set(enums.OnOff(state))
+        if state:
+            await self.filter.apply.set()

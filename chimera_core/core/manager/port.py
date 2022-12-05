@@ -55,7 +55,27 @@ class PortConfigurator:
         return config
 
     async def set(self, config: PortConfig) -> None:
-        pass
+        coroutines = (
+            self.port.comment.set(config.comment),
+            self.port.pcs_pma.link_flap.enable.set(config.link_flap.enable),
+            self.port.pcs_pma.link_flap.params.set(
+                duration=config.link_flap.duration,
+                period=config.link_flap.period,
+                repetition=config.link_flap.repetition
+            ),
+            self.port.pcs_pma.pma_pulse_err_inj.enable.set(config.pulse_error.enable),
+            self.port.pcs_pma.pma_pulse_err_inj.params.set(
+                duration=config.pulse_error.duration,
+                period=config.pulse_error.period,
+                repetition=config.pulse_error.repetition,
+                coeff=config.pulse_error.coeff,
+                exp=config.pulse_error.exp,
+            ),
+            self.port.emulate.set(config.emulate),
+            self.port.emulation.tpld_mode.set(config.tpld_mode),
+            self.port.emulation.drop_fcs_errors.set(config.fcs_error_mode),
+        )
+        await asyncio.gather(*coroutines)
 
 
 class PortManager(ReserveMixin):

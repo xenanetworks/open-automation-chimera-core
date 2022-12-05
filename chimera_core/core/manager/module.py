@@ -43,7 +43,15 @@ class ModuleConfigurator:
         )
 
     async def set(self, config: ModuleConfig) -> None:
-        await self.module.comment.set(config.comment)
+        coroutines = (
+            self.module.comment.set(config.comment),
+            self.module.clock_ppb.set(config.clock_ppb),
+            self.module.tx_clock.source.set(config.tx_clock_source),
+            self.module.latency_mode.set(config.latency_mode),
+            self.module.cfp.config.set(config.port_count, config.port_speed),
+            self.module.bypass_mode.set(config.bypass_mode),
+        )
+        await asyncio.gather(*coroutines)
 
 
 class ModuleManager(ReserveMixin):
