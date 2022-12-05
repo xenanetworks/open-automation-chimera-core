@@ -64,8 +64,16 @@ class LatencyJitterConfigMain(BaseModel):
 
 
 class ShadowFilterConfigBasicEthernet(BaseModel):
-    use: enums.OnOff = enums.OnOff.OFF
+    use: enums.FilterUse = enums.FilterUse.OFF
+    action: enums.InfoAction = enums.InfoAction.INCLUDE
+    use_src_addr: enums.OnOff = enums.OnOff.OFF
+    value_src_addr: str = "0x000000000000"
+    mask_src_addr: str = "0xFFFFFFFFFFFF"
+    use_dest_addr: enums.OnOff = enums.OnOff.OFF
+    value_dest_addr: str = "0x000000000000"
+    mask_dest_addr: str = "0xFFFFFFFFFFFF"
 
 
 class ShadowFilterConfigBasic(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
+    l2plus_use: enums.L2PlusPresent = enums.L2PlusPresent.NA

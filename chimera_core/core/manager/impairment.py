@@ -1,3 +1,4 @@
+import asyncio
 from typing import TYPE_CHECKING, Optional
 
 from loguru import logger
@@ -6,7 +7,7 @@ from xoa_driver.v2 import misc
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
-from .dataset import LatencyJitterConfigDistribution, LatencyJitterConfigMain, LatencyJitterConfigSchedule, ShadowFilterConfigBasic
+from .dataset import LatencyJitterConfigDistribution, LatencyJitterConfigMain, LatencyJitterConfigSchedule, ShadowFilterConfigBasic, ShadowFilterConfigBasicEthernet
 
 if TYPE_CHECKING:
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
@@ -64,7 +65,29 @@ class ShadowFilterConfiguratorBasic:
         self.basic_mode = basic_mode
 
     async def get(self) -> ShadowFilterConfigBasic:
-        return ShadowFilterConfigBasic()
+        settings, src_addr, dest_addr, l2plus = await asyncio.gather(*(
+            self.basic_mode.ethernet.settings.get(),
+            self.basic_mode.ethernet.src_address.get(),
+            self.basic_mode.ethernet.dest_address.get(),
+            self.basic_mode.l2plus_use.get(),
+
+        ))
+        ethernet = ShadowFilterConfigBasicEthernet(
+            use=enums.FilterUse(settings.use),
+            action=enums.InfoAction(settings.action),
+            use_src_addr=enums.OnOff(src_addr.use),
+            value_src_addr=src_addr.value,
+            mask_src_addr=src_addr.mask,
+            use_dest_addr=enums.OnOff(dest_addr.use),
+            value_dest_addr=dest_addr.value,
+            mask_dest_addr=dest_addr.mask,
+
+        )
+        config = ShadowFilterConfigBasic(
+            ethernet=ethernet,
+            l2plus_use=enums.L2PlusPresent(l2plus.use),
+        )
+        return config
 
 
 class ShadowFilterManager:

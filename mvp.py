@@ -68,10 +68,12 @@ async def main():
     # # # ... all other flow methods
     basic_config = await flow.shadow_filter.use_basic_mode()
     current_filter_config = await basic_config.get()
+    logger.debug(current_filter_config)
+    return None
     current_filter_config.ethernet
 
     await flow.shadow_filter.set()
-    # await flow.shadow_filter.enable(True)
+    await flow.shadow_filter.enable(True)
     # await flow.latency_jitter.enable(True)
     # await flow.drop.set()
     # await flow.drop.enable(True)
