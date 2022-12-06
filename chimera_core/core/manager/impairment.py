@@ -7,11 +7,19 @@ from xoa_driver.v2 import misc
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
-from .dataset import LatencyJitterConfigDistribution, LatencyJitterConfigMain, LatencyJitterConfigSchedule, ShadowFilterConfigBasic, ShadowFilterConfigBasicEthernet
+from .dataset import (
+    LatencyJitterConfigDistribution,
+    LatencyJitterConfigMain,
+    LatencyJitterConfigSchedule,
+    ShadowFilterConfigBasic,
+    ShadowFilterConfigBasicEthernet,
+    ShadowFilterConfigBasicVLAN,
+)
 
 if TYPE_CHECKING:
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
+
 
 class LatencyJitter:
     def __init__(self, impairment: "CLatencyJitterImpairment"):
@@ -29,7 +37,7 @@ class LatencyJitter:
             schedule=LatencyJitterConfigSchedule(duration=schedule.duration, period=schedule.period)
         )
 
-    async def set(self, config: Optional[LatencyJitterConfigMain] =None, constant_delay: Optional[int] = None, duration: Optional[int] = None, period: Optional[int] = None) -> None:
+    async def set(self, config: Optional[LatencyJitterConfigMain]) -> None:
         if not config:
             config = LatencyJitterConfigMain(
                 distribution=LatencyJitterConfigDistribution(constant_delay=constant_delay),
@@ -61,20 +69,25 @@ class DropHandler:
 
 class ShadowFilterConfiguratorBasic:
     def __init__(self, filter_: "FilterDefinitionShadow", basic_mode: "ModeBasic"):
-        self.filter = filter_
+        self.shadow_filter = filter_
         self.basic_mode = basic_mode
 
     async def get(self) -> ShadowFilterConfigBasic:
-        settings, src_addr, dest_addr, l2plus = await asyncio.gather(*(
+        ethernet, src_addr, dest_addr, l2plus, vlan, vlan_tag_inner, vlan_pcp_inner, vlan_tag_outer, vlan_pcp_outer = await asyncio.gather(*(
             self.basic_mode.ethernet.settings.get(),
             self.basic_mode.ethernet.src_address.get(),
             self.basic_mode.ethernet.dest_address.get(),
             self.basic_mode.l2plus_use.get(),
-
+            self.basic_mode.vlan.settings.get(),
+            self.basic_mode.vlan.inner.tag.get(),
+            self.basic_mode.vlan.inner.pcp.get(),
+            self.basic_mode.vlan.outer.tag.get(),
+            self.basic_mode.vlan.outer.pcp.get(),
         ))
+
         ethernet = ShadowFilterConfigBasicEthernet(
-            use=enums.FilterUse(settings.use),
-            action=enums.InfoAction(settings.action),
+            use=enums.FilterUse(ethernet.use),
+            action=enums.InfoAction(ethernet.action),
             use_src_addr=enums.OnOff(src_addr.use),
             value_src_addr=src_addr.value,
             mask_src_addr=src_addr.mask,
@@ -83,11 +96,73 @@ class ShadowFilterConfiguratorBasic:
             mask_dest_addr=dest_addr.mask,
 
         )
+        logger.debug(vlan_pcp_inner)
+        vlan = ShadowFilterConfigBasicVLAN(
+            use=enums.FilterUse(vlan.use),
+            action=enums.InfoAction(vlan.action),
+
+            use_tag_inner=enums.OnOff(vlan_tag_inner.use),
+            value_tag_inner=vlan_tag_inner.value,
+            mask_tag_inner=vlan_tag_inner.mask,
+
+            use_pcp_inner=enums.OnOff(vlan_pcp_inner.use),
+            value_pcp_inner=vlan_pcp_inner.value,
+            mask_pcp_inner=vlan_pcp_inner.mask,
+
+            use_tag_outer=enums.OnOff(vlan_tag_outer.use),
+            value_tag_outer=vlan_tag_outer.value,
+            mask_tag_outer=vlan_tag_outer.mask,
+
+            use_pcp_outer=enums.OnOff(vlan_pcp_outer.use),
+            value_pcp_outer=vlan_pcp_outer.value,
+            mask_pcp_outer=vlan_pcp_outer.mask,
+
+        )
         config = ShadowFilterConfigBasic(
             ethernet=ethernet,
             l2plus_use=enums.L2PlusPresent(l2plus.use),
+            vlan=vlan,
         )
         return config
+
+    async def set(self, config: ShadowFilterConfigBasic) -> None:
+        logger.debug(config.vlan)
+        coroutines = (
+            self.basic_mode.ethernet.settings.set(config.ethernet.use, action=config.ethernet.action),
+            self.basic_mode.ethernet.src_address.set(
+                use=config.ethernet.use_src_addr,
+                value=config.ethernet.value_src_addr,
+                mask=config.ethernet.mask_src_addr
+            ),
+            self.basic_mode.ethernet.dest_address.set(
+                use=config.ethernet.use_dest_addr,
+                value=config.ethernet.value_dest_addr,
+                mask=config.ethernet.mask_dest_addr
+            ),
+            self.basic_mode.l2plus_use.set(use=config.l2plus_use),
+            self.basic_mode.vlan.settings.set(use=config.vlan.use, action=config.vlan.action),
+            self.basic_mode.vlan.inner.tag.set(
+                use=config.vlan.use_tag_inner,
+                value=config.vlan.value_tag_inner,
+                mask=config.vlan.mask_tag_inner
+            ),
+            self.basic_mode.vlan.inner.pcp.set(
+                use=config.vlan.use_pcp_inner,
+                value=config.vlan.value_pcp_inner,
+                mask=config.vlan.mask_pcp_inner
+            ),
+            self.basic_mode.vlan.outer.tag.set(
+                use=config.vlan.use_tag_outer,
+                value=config.vlan.value_tag_outer,
+                mask=config.vlan.mask_tag_outer,
+            ),
+            self.basic_mode.vlan.outer.pcp.set(
+                use=config.vlan.use_pcp_outer,
+                value=config.vlan.value_pcp_outer,
+                mask=config.vlan.mask_pcp_outer,
+            ),
+        )
+        await asyncio.gather(*coroutines)
 
 
 class ShadowFilterManager:

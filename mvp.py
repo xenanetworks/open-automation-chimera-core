@@ -69,8 +69,11 @@ async def main():
     basic_config = await flow.shadow_filter.use_basic_mode()
     current_filter_config = await basic_config.get()
     logger.debug(current_filter_config)
+    current_filter_config.vlan.use = enums.FilterUse.AND
+    current_filter_config.vlan.action = enums.InfoAction.INCLUDE
+    current_filter_config.l2plus_use = enums.L2PlusPresent.VLAN1
+    await basic_config.set(current_filter_config)
     return None
-    current_filter_config.ethernet
 
     await flow.shadow_filter.set()
     await flow.shadow_filter.enable(True)

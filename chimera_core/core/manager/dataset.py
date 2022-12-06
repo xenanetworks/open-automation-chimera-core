@@ -74,6 +74,26 @@ class ShadowFilterConfigBasicEthernet(BaseModel):
     mask_dest_addr: str = "0xFFFFFFFFFFFF"
 
 
+class ShadowFilterConfigBasicVLAN(BaseModel):
+    use: enums.FilterUse = enums.FilterUse.OFF
+    action: enums.InfoAction = enums.InfoAction.INCLUDE
+    # inner
+    use_tag_inner: enums.OnOff = enums.OnOff.OFF
+    value_tag_inner: int = 0
+    mask_tag_inner: str = "0xFFF"
+    use_pcp_inner: enums.OnOff = enums.OnOff.OFF
+    value_pcp_inner: int = 0
+    mask_pcp_inner: str = "0xFFF"
+    # outer
+    use_tag_outer: enums.OnOff = enums.OnOff.OFF
+    value_tag_outer: int = 0
+    mask_tag_outer: str = "0xFFF"
+    use_pcp_outer: enums.OnOff = enums.OnOff.OFF
+    value_pcp_outer: int = 0
+    mask_pcp_outer: str = "0xFFF"
+
+
 class ShadowFilterConfigBasic(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
     l2plus_use: enums.L2PlusPresent = enums.L2PlusPresent.NA
+    vlan: ShadowFilterConfigBasicVLAN = ShadowFilterConfigBasicVLAN()
