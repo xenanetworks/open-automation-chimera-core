@@ -13,6 +13,9 @@ from .dataset import (
     LatencyJitterConfigSchedule,
     ShadowFilterConfigBasic,
     ShadowFilterConfigBasicEthernet,
+    ShadowFilterConfigBasicIPv4DESTADDR,
+    ShadowFilterConfigBasicIPv4Main,
+    ShadowFilterConfigBasicIPv4SRCADDR,
     ShadowFilterConfigBasicVLAN,
 )
 
@@ -73,19 +76,23 @@ class ShadowFilterConfiguratorBasic:
         self.basic_mode = basic_mode
 
     async def get(self) -> ShadowFilterConfigBasic:
-        ethernet, src_addr, dest_addr, l2plus, vlan, vlan_tag_inner, vlan_pcp_inner, vlan_tag_outer, vlan_pcp_outer = await asyncio.gather(*(
-            self.basic_mode.ethernet.settings.get(),
-            self.basic_mode.ethernet.src_address.get(),
-            self.basic_mode.ethernet.dest_address.get(),
-            self.basic_mode.l2plus_use.get(),
-            self.basic_mode.vlan.settings.get(),
-            self.basic_mode.vlan.inner.tag.get(),
-            self.basic_mode.vlan.inner.pcp.get(),
-            self.basic_mode.vlan.outer.tag.get(),
-            self.basic_mode.vlan.outer.pcp.get(),
-        ))
+        ethernet, src_addr, dest_addr, l2plus, vlan, vlan_tag_inner, vlan_pcp_inner, vlan_tag_outer, vlan_pcp_outer, \
+            ipv4, ipv4_src_addr, ipv4_dest_addr = await asyncio.gather(*(
+                self.basic_mode.ethernet.settings.get(),
+                self.basic_mode.ethernet.src_address.get(),
+                self.basic_mode.ethernet.dest_address.get(),
+                self.basic_mode.l2plus_use.get(),
+                self.basic_mode.vlan.settings.get(),
+                self.basic_mode.vlan.inner.tag.get(),
+                self.basic_mode.vlan.inner.pcp.get(),
+                self.basic_mode.vlan.outer.tag.get(),
+                self.basic_mode.vlan.outer.pcp.get(),
+                self.basic_mode.ip.v4.settings.get(),
+                self.basic_mode.ip.v4.src_address.get(),
+                self.basic_mode.ip.v4.dest_address.get(),
+            ))
 
-        ethernet = ShadowFilterConfigBasicEthernet(
+        config_ethernet = ShadowFilterConfigBasicEthernet(
             use=enums.FilterUse(ethernet.use),
             action=enums.InfoAction(ethernet.action),
             use_src_addr=enums.OnOff(src_addr.use),
@@ -96,8 +103,7 @@ class ShadowFilterConfiguratorBasic:
             mask_dest_addr=dest_addr.mask,
 
         )
-        logger.debug(vlan_pcp_inner)
-        vlan = ShadowFilterConfigBasicVLAN(
+        config_vlan = ShadowFilterConfigBasicVLAN(
             use=enums.FilterUse(vlan.use),
             action=enums.InfoAction(vlan.action),
 
@@ -118,10 +124,26 @@ class ShadowFilterConfiguratorBasic:
             mask_pcp_outer=vlan_pcp_outer.mask,
 
         )
+        config_ipv4 = ShadowFilterConfigBasicIPv4Main(
+            use=enums.FilterUse(ipv4.use),
+            action=enums.InfoAction(ipv4.action),
+            src_addr=ShadowFilterConfigBasicIPv4SRCADDR(
+                use=enums.OnOff(ipv4_src_addr.use),
+                value=ipv4_src_addr.value,
+                mask=ipv4_src_addr.mask,
+            ),
+            dest_addr=ShadowFilterConfigBasicIPv4DESTADDR(
+                use=enums.OnOff(ipv4_dest_addr.use),
+                value=ipv4_dest_addr.value,
+                mask=ipv4_dest_addr.mask,
+            ),
+        )
+
         config = ShadowFilterConfigBasic(
-            ethernet=ethernet,
+            ethernet=config_ethernet,
             l2plus_use=enums.L2PlusPresent(l2plus.use),
-            vlan=vlan,
+            vlan=config_vlan,
+            ipv4=config_ipv4,
         )
         return config
 

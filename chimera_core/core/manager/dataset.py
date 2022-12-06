@@ -1,4 +1,5 @@
-from typing import Optional
+import ipaddress
+from typing import Optional, Union
 
 from pydantic import BaseModel
 from xoa_driver import enums
@@ -63,6 +64,30 @@ class LatencyJitterConfigMain(BaseModel):
     enable: Optional[bool] = None
 
 
+class ShadowFilterConfigBasicCommon(BaseModel):
+    use: enums.FilterUse = enums.FilterUse.OFF
+    action: enums.InfoAction = enums.InfoAction.INCLUDE
+
+
+class ShadowFilterConfigBasicSub(BaseModel):
+    use: enums.OnOff = enums.OnOff.OFF
+    value: int = 0
+    mask: str = '0xff'
+
+
+class ShadowFilterConfigBasicIPv4SRCADDR(ShadowFilterConfigBasicSub):
+    value: Union[str, int, ipaddress.IPv4Address] = '0.0.0.0'
+
+
+class ShadowFilterConfigBasicIPv4DESTADDR(ShadowFilterConfigBasicIPv4SRCADDR):
+    pass
+
+
+class ShadowFilterConfigBasicIPv4Main(ShadowFilterConfigBasicCommon):
+    src_addr: ShadowFilterConfigBasicIPv4SRCADDR = ShadowFilterConfigBasicIPv4SRCADDR()
+    dest_addr: ShadowFilterConfigBasicIPv4DESTADDR = ShadowFilterConfigBasicIPv4DESTADDR()
+
+
 class ShadowFilterConfigBasicEthernet(BaseModel):
     use: enums.FilterUse = enums.FilterUse.OFF
     action: enums.InfoAction = enums.InfoAction.INCLUDE
@@ -97,3 +122,4 @@ class ShadowFilterConfigBasic(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
     l2plus_use: enums.L2PlusPresent = enums.L2PlusPresent.NA
     vlan: ShadowFilterConfigBasicVLAN = ShadowFilterConfigBasicVLAN()
+    ipv4: ShadowFilterConfigBasicIPv4Main = ShadowFilterConfigBasicIPv4Main()
