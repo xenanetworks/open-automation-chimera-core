@@ -8,14 +8,18 @@ from xoa_driver.v2 import misc
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
 from .dataset import (
-    LatencyJitterConfigDistribution,
+    DropConfigMain,
     LatencyJitterConfigMain,
-    LatencyJitterConfigSchedule,
+    Schedule,
     ShadowFilterConfigBasic,
     ShadowFilterConfigBasicEthernet,
     ShadowFilterConfigBasicIPv4DESTADDR,
+    ShadowFilterConfigBasicIPv4DSCP,
     ShadowFilterConfigBasicIPv4Main,
     ShadowFilterConfigBasicIPv4SRCADDR,
+    ShadowFilterConfigBasicIPv6DESTADDR,
+    ShadowFilterConfigBasicIPv6Main,
+    ShadowFilterConfigBasicIPv6SRCADDR,
     ShadowFilterConfigBasicVLAN,
 )
 
@@ -29,25 +33,18 @@ class LatencyJitter:
         self.impairment = impairment
 
     async def get(self) -> LatencyJitterConfigMain:
-        enable, schedule = await utils.apply(
+        enable, schedule = await asyncio.gather(*(
             self.impairment.enable.get(),
             self.impairment.schedule.get(),
-        )
+        ))
 
         return LatencyJitterConfigMain(
             enable=enable.action,
-            distribution=LatencyJitterConfigDistribution(),
-            schedule=LatencyJitterConfigSchedule(duration=schedule.duration, period=schedule.period)
+
         )
 
     async def set(self, config: Optional[LatencyJitterConfigMain]) -> None:
-        if not config:
-            config = LatencyJitterConfigMain(
-                distribution=LatencyJitterConfigDistribution(constant_delay=constant_delay),
-                schedule=LatencyJitterConfigSchedule(duration=duration, period=period),
-            )
-
-        if config.distribution.constant_delay:
+        if config.constant_delay:
             await self.impairment.distribution.constant_delay.set(config.distribution.constant_delay)
 
         # if config.schedule:
@@ -58,9 +55,22 @@ class LatencyJitter:
         await self.impairment.enable.set(enums.OnOff(b))
 
 
-class DropHandler:
+class DropConfigurator:
     def __init__(self, impairment: "CDropImpairment"):
         self.impairment = impairment
+
+    async def get(self) -> DropConfigMain:
+        enable, schedule, fixed_burst = await asyncio.gather(*(
+            self.impairment.enable.get(),
+            self.impairment.schedule.get(),
+            self.impairment.distribution.fixed_burst.get(),
+        ))
+        config = DropConfigMain(
+            enable=enums.OnOff(enable.action),
+            schedule=Schedule(duration=schedule.duration, period=schedule.period),
+            fixed_burst=fixed_burst.burst_size,
+        )
+        return config
 
     async def set(self):
         await self.impairment.distribution.fixed_burst.set(burst_size=5)
@@ -76,8 +86,8 @@ class ShadowFilterConfiguratorBasic:
         self.basic_mode = basic_mode
 
     async def get(self) -> ShadowFilterConfigBasic:
-        ethernet, src_addr, dest_addr, l2plus, vlan, vlan_tag_inner, vlan_pcp_inner, vlan_tag_outer, vlan_pcp_outer, \
-            ipv4, ipv4_src_addr, ipv4_dest_addr = await asyncio.gather(*(
+        ethernet, src_addr, dest_addr, l2, vlan, vlan_tag_inner, vlan_pcp_inner, vlan_tag_outer, vlan_pcp_outer, \
+            l3, ipv4, ipv4_src_addr, ipv4_dest_addr, ipv4_dscp, ipv6, ipv6_src_addr, ipv6_dest_addr = await asyncio.gather(*(
                 self.basic_mode.ethernet.settings.get(),
                 self.basic_mode.ethernet.src_address.get(),
                 self.basic_mode.ethernet.dest_address.get(),
@@ -87,9 +97,14 @@ class ShadowFilterConfiguratorBasic:
                 self.basic_mode.vlan.inner.pcp.get(),
                 self.basic_mode.vlan.outer.tag.get(),
                 self.basic_mode.vlan.outer.pcp.get(),
+                self.basic_mode.l3_use.get(),
                 self.basic_mode.ip.v4.settings.get(),
                 self.basic_mode.ip.v4.src_address.get(),
                 self.basic_mode.ip.v4.dest_address.get(),
+                self.basic_mode.ip.v4.dscp.get(),
+                self.basic_mode.ip.v6.settings.get(),
+                self.basic_mode.ip.v6.src_address.get(),
+                self.basic_mode.ip.v6.dest_address.get(),
             ))
 
         config_ethernet = ShadowFilterConfigBasicEthernet(
@@ -122,7 +137,6 @@ class ShadowFilterConfiguratorBasic:
             use_pcp_outer=enums.OnOff(vlan_pcp_outer.use),
             value_pcp_outer=vlan_pcp_outer.value,
             mask_pcp_outer=vlan_pcp_outer.mask,
-
         )
         config_ipv4 = ShadowFilterConfigBasicIPv4Main(
             use=enums.FilterUse(ipv4.use),
@@ -137,54 +151,110 @@ class ShadowFilterConfiguratorBasic:
                 value=ipv4_dest_addr.value,
                 mask=ipv4_dest_addr.mask,
             ),
+            dscp=ShadowFilterConfigBasicIPv4DSCP(
+                use=enums.OnOff(ipv4_dscp.use),
+                value=ipv4_dscp.value,
+                mask=ipv4_dscp.mask,
+            ),
+        )
+        config_ipv6 = ShadowFilterConfigBasicIPv6Main(
+            use=enums.FilterUse(ipv6.use),
+            action=enums.InfoAction(ipv6.action),
+            src_addr=ShadowFilterConfigBasicIPv6SRCADDR(
+                use=enums.OnOff(ipv6_src_addr.use),
+                value=ipv6_src_addr.value,
+                mask=ipv6_src_addr.mask,
+            ),
+            dest_addr=ShadowFilterConfigBasicIPv6DESTADDR(
+                use=enums.OnOff(ipv6_dest_addr.use),
+                value=ipv6_dest_addr.value,
+                mask=ipv6_dest_addr.mask,
+            ),
         )
 
         config = ShadowFilterConfigBasic(
             ethernet=config_ethernet,
-            l2plus_use=enums.L2PlusPresent(l2plus.use),
+            use_l2plus=enums.L2PlusPresent(l2.use),
             vlan=config_vlan,
+            use_l3=enums.L3PlusPresent(l3.use),
             ipv4=config_ipv4,
+            ipv6=config_ipv6,
         )
         return config
 
     async def set(self, config: ShadowFilterConfigBasic) -> None:
-        logger.debug(config.vlan)
-        coroutines = (
-            self.basic_mode.ethernet.settings.set(config.ethernet.use, action=config.ethernet.action),
-            self.basic_mode.ethernet.src_address.set(
-                use=config.ethernet.use_src_addr,
-                value=config.ethernet.value_src_addr,
-                mask=config.ethernet.mask_src_addr
-            ),
-            self.basic_mode.ethernet.dest_address.set(
-                use=config.ethernet.use_dest_addr,
-                value=config.ethernet.value_dest_addr,
-                mask=config.ethernet.mask_dest_addr
-            ),
-            self.basic_mode.l2plus_use.set(use=config.l2plus_use),
-            self.basic_mode.vlan.settings.set(use=config.vlan.use, action=config.vlan.action),
-            self.basic_mode.vlan.inner.tag.set(
-                use=config.vlan.use_tag_inner,
-                value=config.vlan.value_tag_inner,
-                mask=config.vlan.mask_tag_inner
-            ),
-            self.basic_mode.vlan.inner.pcp.set(
-                use=config.vlan.use_pcp_inner,
-                value=config.vlan.value_pcp_inner,
-                mask=config.vlan.mask_pcp_inner
-            ),
-            self.basic_mode.vlan.outer.tag.set(
-                use=config.vlan.use_tag_outer,
-                value=config.vlan.value_tag_outer,
-                mask=config.vlan.mask_tag_outer,
-            ),
-            self.basic_mode.vlan.outer.pcp.set(
-                use=config.vlan.use_pcp_outer,
-                value=config.vlan.value_pcp_outer,
-                mask=config.vlan.mask_pcp_outer,
-            ),
-        )
-        await asyncio.gather(*coroutines)
+        coroutines = [
+            # self.basic_mode.ethernet.settings.set(config.ethernet.use, action=config.ethernet.action),
+            # self.basic_mode.ethernet.src_address.set(
+            #     use=config.ethernet.use_src_addr,
+            #     value=config.ethernet.value_src_addr,
+            #     mask=config.ethernet.mask_src_addr
+            # ),
+            # self.basic_mode.ethernet.dest_address.set(
+            #     use=config.ethernet.use_dest_addr,
+            #     value=config.ethernet.value_dest_addr,
+            #     mask=config.ethernet.mask_dest_addr
+            # ),
+            self.basic_mode.l2plus_use.set(use=config.use_l2plus),
+            self.basic_mode.l3_use.set(use=config.use_l3),
+        ]
+
+        if config.use_l2plus != enums.L2PlusPresent.NA:
+            coroutines.extend([
+                self.basic_mode.vlan.settings.set(use=config.vlan.use, action=config.vlan.action),
+                self.basic_mode.vlan.inner.tag.set(
+                    use=config.vlan.use_tag_inner,
+                    value=config.vlan.value_tag_inner,
+                    mask=config.vlan.mask_tag_inner
+                ),
+                self.basic_mode.vlan.inner.pcp.set(
+                    use=config.vlan.use_pcp_inner,
+                    value=config.vlan.value_pcp_inner,
+                    mask=config.vlan.mask_pcp_inner
+                ),
+                self.basic_mode.vlan.outer.tag.set(
+                    use=config.vlan.use_tag_outer,
+                    value=config.vlan.value_tag_outer,
+                    mask=config.vlan.mask_tag_outer,
+                ),
+                self.basic_mode.vlan.outer.pcp.set(
+                    use=config.vlan.use_pcp_outer,
+                    value=config.vlan.value_pcp_outer,
+                    mask=config.vlan.mask_pcp_outer,
+                ),
+            ])
+
+        if config.use_l3 == enums.L3PlusPresent.IP4:
+            coroutines.extend([
+                self.basic_mode.ip.v4.settings.set(use=config.ipv4.use, action=config.ipv4.action),
+                self.basic_mode.ip.v4.src_address.set(
+                    use=config.ipv4.src_addr.use,
+                    value=config.ipv4.src_addr.value,
+                    mask=config.ipv4.src_addr.mask,
+                ),
+                self.basic_mode.ip.v4.dest_address.set(
+                    use=config.ipv4.dest_addr.use,
+                    value=config.ipv4.dest_addr.value,
+                    mask=config.ipv4.dest_addr.mask,
+                ),
+            ])
+
+        elif config.use_l3 == enums.L3PlusPresent.IP6:
+            coroutines.extend([
+                self.basic_mode.ip.v6.settings.set(use=config.ipv6.use, action=config.ipv6.action),
+                self.basic_mode.ip.v6.src_address.set(
+                    use=config.ipv6.src_addr.use,
+                    value=config.ipv6.src_addr.value,
+                    mask=config.ipv6.src_addr.mask,
+                ),
+                self.basic_mode.ip.v6.dest_address.set(
+                    use=config.ipv6.dest_addr.use,
+                    value=config.ipv6.dest_addr.value,
+                    mask=config.ipv6.dest_addr.mask,
+                ),
+            ])
+        # await asyncio.gather(*coroutines)
+        await utils.apply(*coroutines)
 
 
 class ShadowFilterManager:

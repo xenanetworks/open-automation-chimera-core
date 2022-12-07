@@ -14,6 +14,7 @@ from chimera_core.core.manager.dataset import ModuleConfig
 
 TESTER_IP_ADDRESS = '192.168.1.201'
 
+
 async def subscribe(my_controller: controller.MainController, pipe: str) -> None:
     async for msg in my_controller.listen_changes(pipe):
         logger.debug(msg)
@@ -44,9 +45,9 @@ async def main():
     # read current config
     module_current_config = await module.config.get()
     logger.debug(module_current_config.comment)
-    await module.reserve_if_not()
-    module_current_config.comment = 'hello'
-    await module.config.set(module_current_config)
+    # await module.reserve_if_not()
+    # module_current_config.comment = 'hello'
+    # await module.config.set(module_current_config)
     module_current_config = await module.config.get()
     logger.debug(module_current_config.comment)
 
@@ -55,30 +56,39 @@ async def main():
     # await module.config.set(module_current_config)
 
     port_config = await port.config.get()
-    logger.debug(port_config)
+    # logger.debug(port_config)
     await port.reserve_if_not()
     port_config.emulate = enums.OnOff.ON
-    await port.config.set(port_config)
+    # await port.config.set(port_config)
 
     flow = port.flows[1]
-    current_cfg = await flow.latency_jitter.get()
-    logger.debug(current_cfg)
+    latency_jtter_config = await flow.latency_jitter.get()
+    logger.debug(latency_jtter_config)
 
-    await flow.shadow_filter.reset()
+    # await flow.shadow_filter.reset()
     # # # ... all other flow methods
-    basic_config = await flow.shadow_filter.use_basic_mode()
-    current_filter_config = await basic_config.get()
+    filter_basic_mode = await flow.shadow_filter.use_basic_mode()
+    current_filter_config = await filter_basic_mode.get()
     logger.debug(current_filter_config)
-    current_filter_config.vlan.use = enums.FilterUse.AND
-    current_filter_config.vlan.action = enums.InfoAction.INCLUDE
-    current_filter_config.l2plus_use = enums.L2PlusPresent.VLAN1
-    await basic_config.set(current_filter_config)
+
+    drop_config = await flow.drop.get()
+    logger.debug(drop_config)
     return None
+    # current_filter_config.l2plus_use = enums.L2PlusPresent.VLAN1
+    # current_filter_config.vlan.use = enums.FilterUse.AND
+    # current_filter_config.vlan.action = enums.InfoAction.INCLUDE
+    # current_filter_config.use_l3 = enums.L3PlusPresent.IP4
+    # current_filter_config.ipv4.use = enums.FilterUse.AND
+    # current_filter_config.ipv4.src_addr.use = enums.OnOff.ON
+    # current_filter_config.ipv4.src_addr.value = '1.2.3.4'
+    # await basic_config.set(current_filter_config)
+    current_filter_config = await filter_basic_mode.get()
+    logger.debug(current_filter_config)
 
     await flow.shadow_filter.set()
     await flow.shadow_filter.enable(True)
+
     # await flow.latency_jitter.enable(True)
-    # await flow.drop.set()
     # await flow.drop.enable(True)
 
 

@@ -49,19 +49,25 @@ class ModuleConfig(BaseModel):
     bypass_mode: enums.OnOff = enums.OnOff.OFF
 
 
-class LatencyJitterConfigDistribution(BaseModel):
-    constant_delay: Optional[int] = None
+class ImpairmentConfigCommonEnable(BaseModel):
+    enable: enums.OnOff = enums.OnOff.OFF
 
 
-class LatencyJitterConfigSchedule(BaseModel):
-    duration: Optional[int] = None
-    period: Optional[int] = None
+class Schedule(BaseModel):
+    duration: int = 1
+    period: int = 0
 
 
-class LatencyJitterConfigMain(BaseModel):
-    distribution: LatencyJitterConfigDistribution
-    schedule: Optional[LatencyJitterConfigSchedule] = None
-    enable: Optional[bool] = None
+class ImpairmentConfigCommonEnableSchedule(ImpairmentConfigCommonEnable):
+    schedule: Schedule = Schedule()
+
+
+class LatencyJitterConfigMain(ImpairmentConfigCommonEnableSchedule):
+    constant_delay: int = 1
+
+
+class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
+    fixed_burst: int = 1
 
 
 class ShadowFilterConfigBasicCommon(BaseModel):
@@ -83,9 +89,27 @@ class ShadowFilterConfigBasicIPv4DESTADDR(ShadowFilterConfigBasicIPv4SRCADDR):
     pass
 
 
+class ShadowFilterConfigBasicIPv4DSCP(ShadowFilterConfigBasicSub):
+    pass
+
+
+class ShadowFilterConfigBasicIPv6SRCADDR(ShadowFilterConfigBasicSub):
+    value: Union[str, ipaddress.IPv6Address] = '0x00000000000000000000000000000000'
+
+
+class ShadowFilterConfigBasicIPv6DESTADDR(ShadowFilterConfigBasicIPv6SRCADDR):
+    pass
+
+
 class ShadowFilterConfigBasicIPv4Main(ShadowFilterConfigBasicCommon):
     src_addr: ShadowFilterConfigBasicIPv4SRCADDR = ShadowFilterConfigBasicIPv4SRCADDR()
     dest_addr: ShadowFilterConfigBasicIPv4DESTADDR = ShadowFilterConfigBasicIPv4DESTADDR()
+    dscp: ShadowFilterConfigBasicIPv4DSCP = ShadowFilterConfigBasicIPv4DSCP()
+
+
+class ShadowFilterConfigBasicIPv6Main(ShadowFilterConfigBasicCommon):
+    src_addr: ShadowFilterConfigBasicIPv6SRCADDR = ShadowFilterConfigBasicIPv6SRCADDR()
+    dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = ShadowFilterConfigBasicIPv6DESTADDR()
 
 
 class ShadowFilterConfigBasicEthernet(BaseModel):
@@ -120,6 +144,8 @@ class ShadowFilterConfigBasicVLAN(BaseModel):
 
 class ShadowFilterConfigBasic(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
-    l2plus_use: enums.L2PlusPresent = enums.L2PlusPresent.NA
+    use_l2plus: enums.L2PlusPresent = enums.L2PlusPresent.NA
     vlan: ShadowFilterConfigBasicVLAN = ShadowFilterConfigBasicVLAN()
+    use_l3: enums.L3PlusPresent = enums.L3PlusPresent.NA
     ipv4: ShadowFilterConfigBasicIPv4Main = ShadowFilterConfigBasicIPv4Main()
+    ipv6: ShadowFilterConfigBasicIPv6Main = ShadowFilterConfigBasicIPv6Main()
