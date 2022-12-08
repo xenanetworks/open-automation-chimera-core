@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union, Any
 
 from loguru import logger
 from xoa_driver import utils, enums
@@ -9,6 +9,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 
 from .dataset import (
     DropConfigMain,
+    DistributionResponseValidator,
     LatencyJitterConfigMain,
     Schedule,
     ShadowFilterConfigBasic,
@@ -60,21 +61,34 @@ class DropConfigurator:
         self.impairment = impairment
 
     async def get(self) -> DropConfigMain:
-        enable, schedule, fixed_burst = await asyncio.gather(*(
+        enable, schedule = await asyncio.gather(*(
             self.impairment.enable.get(),
             self.impairment.schedule.get(),
-            self.impairment.distribution.fixed_burst.get(),
         ))
+
+        distributions = await asyncio.gather(*(
+            self.impairment.distribution.fixed_burst.get(),
+            self.impairment.distribution.random.get(),
+            self.impairment.distribution.fixed.get(),
+            self.impairment.distribution.bit_error_rate.get(),
+            self.impairment.distribution.ge.get(),
+            self.impairment.distribution.uniform.get(),
+            self.impairment.distribution.gaussian.get(),
+            self.impairment.distribution.gamma.get(),
+            self.impairment.distribution.poison.get(),
+            self.impairment.distribution.custom.get(),
+        ), return_exceptions=True)
+
         config = DropConfigMain(
             enable=enums.OnOff(enable.action),
             schedule=Schedule(duration=schedule.duration, period=schedule.period),
-            fixed_burst=fixed_burst.burst_size,
         )
+        drv = DistributionResponseValidator(*distributions)
+        config.load_value_from_validator(drv)
         return config
 
     async def set(self):
-        await self.impairment.distribution.fixed_burst.set(burst_size=5)
-        await self.impairment.schedule.set(1, 5)
+        pass
 
     async def enable(self, b: bool) -> None:
         await self.impairment.enable.set(enums.OnOff(b))

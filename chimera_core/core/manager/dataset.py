@@ -1,5 +1,6 @@
 import ipaddress
-from typing import Optional, Union
+from typing import Any, NamedTuple, Optional, Union
+from loguru import logger
 
 from pydantic import BaseModel
 from xoa_driver import enums
@@ -66,8 +67,57 @@ class LatencyJitterConfigMain(ImpairmentConfigCommonEnableSchedule):
     constant_delay: int = 1
 
 
+TypeExceptionAny = Union[Exception, Any, None]  # how do you typing "GetDataAttr" instead of any?
+
+
+class DistributionResponseValidator(NamedTuple):
+    """If query get command not return NOTVALID, the command was being set"""
+    fixed_burst: TypeExceptionAny = None
+    random: TypeExceptionAny = None
+    fixed: TypeExceptionAny = None
+    bit_error_rate: TypeExceptionAny = None
+    ge: TypeExceptionAny = None
+    uniform: TypeExceptionAny = None
+    gaussian: TypeExceptionAny = None
+    gamma: TypeExceptionAny = None
+    poison: TypeExceptionAny = None
+    custom: TypeExceptionAny = None
+    accumulate_and_burst: TypeExceptionAny = None
+    constant_delay: TypeExceptionAny = None
+    step: TypeExceptionAny = None
+
+    @property
+    def enabled_distribution(self) -> Optional[str]:
+        for command_name in self._fields:
+            command_response = getattr(self, command_name)
+            if command_response is None or isinstance(command_response, Exception):
+                continue
+            return command_name
+
+
+class DistributionConfigBase(BaseModel):
+    def __iter__(self):
+        return iter(self.__fields__)
+
+
+class FixedBurst(DistributionConfigBase):
+    burst_size: int = 0
+
+
 class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
-    fixed_burst: int = 1
+    current_dist: str = ''
+    fixed_burst: FixedBurst = FixedBurst()
+
+    def load_value_from_validator(self, validator: DistributionResponseValidator) -> None:
+        if (enabled_distribution_name := validator.enabled_distribution):
+            logger.debug(enabled_distribution_name)
+            distribution_config = getattr(self, enabled_distribution_name)
+            distribution_response = getattr(validator, enabled_distribution_name)
+            for key in distribution_config:
+                response_value = getattr(distribution_response, key, None)
+                if response_value is None:
+                    raise ValueError("it could not be none")
+                setattr(distribution_config, key, response_value)
 
 
 class ShadowFilterConfigBasicCommon(BaseModel):
