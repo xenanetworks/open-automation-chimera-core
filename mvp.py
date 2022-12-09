@@ -62,28 +62,45 @@ async def main():
     # await port.config.set(port_config)
 
     flow = port.flows[1]
-    latency_jtter_config = await flow.latency_jitter.get()
-    logger.debug(latency_jtter_config)
-
-    # await flow.shadow_filter.reset()
-    # # # ... all other flow methods
-    filter_basic_mode = await flow.shadow_filter.use_basic_mode()
-    current_filter_config = await filter_basic_mode.get()
+    await flow.shadow_filter.reset()
+    basic_filter_mode = await flow.shadow_filter.use_basic_mode()
+    current_filter_config = await basic_filter_mode.get()
     logger.debug(current_filter_config)
+
+    current_filter_config.use_l2plus = enums.L2PlusPresent.VLAN1
+    current_filter_config.vlan.use = enums.FilterUse.AND
+    current_filter_config.vlan.action = enums.InfoAction.INCLUDE
+
+    current_filter_config.vlan.use_tag_inner = enums.OnOff.ON
+    current_filter_config.vlan.value_tag_inner = 20
+    current_filter_config.vlan.mask_tag_inner = "0x0FFF"
+
+    current_filter_config.vlan.use_pcp_inner = enums.OnOff.OFF
+    current_filter_config.vlan.value_pcp_inner = 0
+    current_filter_config.vlan.mask_pcp_inner = "0x07"
+
+    current_filter_config.vlan.use_tag_outer = enums.OnOff.OFF
+    current_filter_config.vlan.value_tag_inner = 20
+    current_filter_config.vlan.mask_tag_inner = "0x0FFF"
+
+    current_filter_config.vlan.use_pcp_inner = enums.OnOff.OFF
+    current_filter_config.vlan.value_pcp_inner = 0
+    current_filter_config.vlan.mask_pcp_inner = "0x07"
+
+    await basic_filter_mode.set(current_filter_config)
+
+    latency_jtter_config = await flow.latency_jitter.get()
+    latency_jtter_config.constant_delay.delay = 1000000
+    latency_jtter_config.schedule.duration = 10
+    logger.debug(latency_jtter_config)
+    await flow.latency_jitter.set(latency_jtter_config)
+    return None
 
     drop_config = await flow.drop.get()
+    drop_config.fixed_burst.burst_size = 100
     logger.debug(drop_config)
-    return None
-    # current_filter_config.l2plus_use = enums.L2PlusPresent.VLAN1
-    # current_filter_config.vlan.use = enums.FilterUse.AND
-    # current_filter_config.vlan.action = enums.InfoAction.INCLUDE
-    # current_filter_config.use_l3 = enums.L3PlusPresent.IP4
-    # current_filter_config.ipv4.use = enums.FilterUse.AND
-    # current_filter_config.ipv4.src_addr.use = enums.OnOff.ON
-    # current_filter_config.ipv4.src_addr.value = '1.2.3.4'
-    # await basic_config.set(current_filter_config)
-    current_filter_config = await filter_basic_mode.get()
-    logger.debug(current_filter_config)
+    await flow.drop.set(drop_config)
+    await flow.drop.enable(True)
 
     await flow.shadow_filter.set()
     await flow.shadow_filter.enable(True)

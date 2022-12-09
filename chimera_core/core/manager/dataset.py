@@ -50,23 +50,6 @@ class ModuleConfig(BaseModel):
     bypass_mode: enums.OnOff = enums.OnOff.OFF
 
 
-class ImpairmentConfigCommonEnable(BaseModel):
-    enable: enums.OnOff = enums.OnOff.OFF
-
-
-class Schedule(BaseModel):
-    duration: int = 1
-    period: int = 0
-
-
-class ImpairmentConfigCommonEnableSchedule(ImpairmentConfigCommonEnable):
-    schedule: Schedule = Schedule()
-
-
-class LatencyJitterConfigMain(ImpairmentConfigCommonEnableSchedule):
-    constant_delay: int = 1
-
-
 TypeExceptionAny = Union[Exception, Any, None]  # how do you typing "GetDataAttr" instead of any?
 
 
@@ -95,18 +78,8 @@ class DistributionResponseValidator(NamedTuple):
             return command_name
 
 
-class DistributionConfigBase(BaseModel):
-    def __iter__(self):
-        return iter(self.__fields__)
-
-
-class FixedBurst(DistributionConfigBase):
-    burst_size: int = 0
-
-
-class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
-    current_dist: str = ''
-    fixed_burst: FixedBurst = FixedBurst()
+class ImpairmentConfigCommonEnable(BaseModel):
+    enable: enums.OnOff = enums.OnOff.OFF
 
     def load_value_from_validator(self, validator: DistributionResponseValidator) -> None:
         if (enabled_distribution_name := validator.enabled_distribution):
@@ -118,6 +91,38 @@ class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
                 if response_value is None:
                     raise ValueError("it could not be none")
                 setattr(distribution_config, key, response_value)
+
+
+class Schedule(BaseModel):
+    duration: int = 1
+    period: int = 0
+
+
+class ImpairmentConfigCommonEnableSchedule(ImpairmentConfigCommonEnable):
+    schedule: Schedule = Schedule()
+
+
+class DistributionConfigBase(BaseModel):
+    def __iter__(self):
+        return iter(self.__fields__)
+
+
+class FixedBurst(DistributionConfigBase):
+    burst_size: int = 0
+
+
+class ConstantDelay(DistributionConfigBase):
+    delay: int = 0
+
+
+class LatencyJitterConfigMain(ImpairmentConfigCommonEnableSchedule):
+    constant_delay: ConstantDelay = ConstantDelay()
+
+
+class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
+    current_dist: str = ''
+    fixed_burst: FixedBurst = FixedBurst()
+    constant_delay: ConstantDelay = ConstantDelay()
 
 
 class ShadowFilterConfigBasicCommon(BaseModel):

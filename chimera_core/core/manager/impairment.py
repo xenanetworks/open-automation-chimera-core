@@ -1,9 +1,10 @@
 import asyncio
-from typing import TYPE_CHECKING, NamedTuple, Optional, Union, Any
+from typing import TYPE_CHECKING, Dict, Generic, NamedTuple, Optional, Protocol, Tuple, Type, TypeVar, Union, Any
 
 from loguru import logger
 from xoa_driver import utils, enums
 from xoa_driver.v2 import misc
+from xoa_driver.lli import commands
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
@@ -24,47 +25,65 @@ from .dataset import (
     ShadowFilterConfigBasicVLAN,
 )
 
-if TYPE_CHECKING:
-    from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
-    from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 
 
-class LatencyJitter:
-    def __init__(self, impairment: "CLatencyJitterImpairment"):
+T = TypeVar('T', CLatencyJitterImpairment, CDropImpairment)
+
+
+class ImpairmentConfiguratorBase(Generic[T]):
+    def __init__(self, impairment: T):
         self.impairment = impairment
 
-    async def get(self) -> LatencyJitterConfigMain:
+    async def _get_enable_and_schedule(self) -> Tuple[commands.PED_ENABLE.GetDataAttr, commands.PED_SCHEDULE.GetDataAttr]:
         enable, schedule = await asyncio.gather(*(
             self.impairment.enable.get(),
             self.impairment.schedule.get(),
         ))
+        return enable, schedule
 
-        return LatencyJitterConfigMain(
-            enable=enable.action,
+    async def enable(self, state: bool) -> None:
+        await self.impairment.enable.set(enums.OnOff(state))
 
+
+class LatencyJitterConfigurator(ImpairmentConfiguratorBase[CLatencyJitterImpairment]):
+    async def get(self) -> LatencyJitterConfigMain:
+        enable, schedule = await self._get_enable_and_schedule()
+
+        distributions = await asyncio.gather(*(
+            self.impairment.distribution.constant_delay.get(),
+            self.impairment.distribution.accumulate_and_burst.get(),
+            self.impairment.distribution.step.get(),
+            self.impairment.distribution.uniform.get(),
+            self.impairment.distribution.gaussian.get(),
+            self.impairment.distribution.poison.get(),
+            self.impairment.distribution.gamma.get(),
+            self.impairment.distribution.custom.get(),
+        ), return_exceptions=True)
+
+        config = LatencyJitterConfigMain(
+            enable=enums.OnOff(enable.action),
+            schedule=Schedule(duration=schedule.duration, period=schedule.period),
         )
 
-    async def set(self, config: Optional[LatencyJitterConfigMain]) -> None:
-        if config.constant_delay:
-            await self.impairment.distribution.constant_delay.set(config.distribution.constant_delay)
+        drv = DistributionResponseValidator(*distributions)
+        config.load_value_from_validator(drv)
+        return config
 
-        # if config.schedule:
-        #     if config.schedule.duration or config.schedule.period:
-        #         await self.impairment.schedule.set(config.schedule.duration or 1, config.schedule.period or 0)
+    async def set(self, config: LatencyJitterConfigMain) -> None:
+        await asyncio.gather(*(
+            self.impairment.schedule.set(duration=config.schedule.duration, period=config.schedule.period),
+            self.impairment.distribution.constant_delay.set(config.constant_delay.delay)
+        ))
 
-    async def enable(self, b: bool) -> None:
-        await self.impairment.enable.set(enums.OnOff(b))
 
-
-class DropConfigurator:
+class DropConfigurator(ImpairmentConfiguratorBase[CDropImpairment]):
     def __init__(self, impairment: "CDropImpairment"):
         self.impairment = impairment
 
     async def get(self) -> DropConfigMain:
-        enable, schedule = await asyncio.gather(*(
-            self.impairment.enable.get(),
-            self.impairment.schedule.get(),
-        ))
+        enable, schedule = await self._get_enable_and_schedule()
 
         distributions = await asyncio.gather(*(
             self.impairment.distribution.fixed_burst.get(),
@@ -87,11 +106,13 @@ class DropConfigurator:
         config.load_value_from_validator(drv)
         return config
 
-    async def set(self):
-        pass
+    async def set(self, config: DropConfigMain):
+        await asyncio.gather(*(
+            self.impairment.schedule.set(duration=config.schedule.duration, period=config.schedule.period),
+            self.impairment.distribution.fixed_burst.set(burst_size=config.fixed_burst.burst_size),
+        ))
 
-    async def enable(self, b: bool) -> None:
-        await self.impairment.enable.set(enums.OnOff(b))
+
 
 
 class ShadowFilterConfiguratorBasic:
@@ -277,23 +298,6 @@ class ShadowFilterManager:
 
     async def reset(self) -> None:
         await self.filter.initiating.set()
-
-    async def set(self):
-        await self.filter.initiating.set()
-        filter = await self.filter.get_mode()
-        # Set up the filter to impair frames with VLAN Tag = 20 (using command grouping)
-        if isinstance(filter, misc.BasicImpairmentFlowFilter):
-            await utils.apply(
-                filter.ethernet.settings.set(use=enums.FilterUse.OFF, action=enums.InfoAction.INCLUDE),
-                filter.ethernet.src_address.set(use=enums.OnOff.OFF, value="0x000000000000", mask="0xFFFFFFFFFFFF"),
-                filter.ethernet.dest_address.set(use=enums.OnOff.OFF, value="0x000000000000", mask="0xFFFFFFFFFFFF"),
-                filter.l2plus_use.set(use=enums.L2PlusPresent.VLAN1),
-                filter.vlan.settings.set(use=enums.FilterUse.AND, action=enums.InfoAction.INCLUDE),
-                filter.vlan.inner.tag.set(use=enums.OnOff.ON, value=20, mask="0x0FFF"),
-                filter.vlan.inner.pcp.set(use=enums.OnOff.OFF, value=0, mask="0x07"),
-                filter.vlan.outer.tag.set(use=enums.OnOff.OFF, value=20, mask="0x0FFF"),
-                filter.vlan.outer.pcp.set(use=enums.OnOff.OFF, value=0, mask="0x07"),
-            )
 
     async def use_basic_mode(self) -> "ShadowFilterConfiguratorBasic":
         await self.filter.use_basic_mode()
