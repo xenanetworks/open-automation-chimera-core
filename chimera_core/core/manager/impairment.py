@@ -51,24 +51,25 @@ class LatencyJitterConfigurator(ImpairmentConfiguratorBase[CLatencyJitterImpairm
     async def get(self) -> LatencyJitterConfigMain:
         enable, schedule = await self._get_enable_and_schedule()
 
-        distributions = await asyncio.gather(*(
-            self.impairment.distribution.constant_delay.get(),
-            self.impairment.distribution.accumulate_and_burst.get(),
-            self.impairment.distribution.step.get(),
-            self.impairment.distribution.uniform.get(),
-            self.impairment.distribution.gaussian.get(),
-            self.impairment.distribution.poison.get(),
-            self.impairment.distribution.gamma.get(),
-            self.impairment.distribution.custom.get(),
-        ), return_exceptions=True)
+        # distributions = await asyncio.gather(*(
+        #     self.impairment.distribution.constant_delay.get(),
+        #     self.impairment.distribution.accumulate_and_burst.get(),
+        #     self.impairment.distribution.step.get(),
+        #     self.impairment.distribution.uniform.get(),
+        #     self.impairment.distribution.gaussian.get(),
+        #     self.impairment.distribution.poison.get(),
+        #     self.impairment.distribution.gamma.get(),
+        #     self.impairment.distribution.custom.get(),
+        # ), return_exceptions=True)
 
         config = LatencyJitterConfigMain(
             enable=enums.OnOff(enable.action),
             schedule=Schedule(duration=schedule.duration, period=schedule.period),
         )
-
-        drv = DistributionResponseValidator(*distributions)
-        config.load_value_from_validator(drv)
+        commands = config.get_distribution_commands(self.impairment)
+        logger.debug(commands)
+        responses = dict(zip(commands.keys(), await asyncio.gather(*commands.values(), return_exceptions=True)))
+        config.validate_response_and_load_value(responses)
         return config
 
     async def set(self, config: LatencyJitterConfigMain) -> None:

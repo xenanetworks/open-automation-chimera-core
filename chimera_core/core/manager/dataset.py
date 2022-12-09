@@ -1,9 +1,11 @@
 import ipaddress
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, Callable, Coroutine, Dict, Generator, List, NamedTuple, Optional, Union
 from loguru import logger
 
 from pydantic import BaseModel
 from xoa_driver import enums
+
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
 
 
 INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
@@ -50,7 +52,7 @@ class ModuleConfig(BaseModel):
     bypass_mode: enums.OnOff = enums.OnOff.OFF
 
 
-TypeExceptionAny = Union[Exception, Any, None]  # how do you typing "GetDataAttr" instead of any?
+TypeExceptionAny = Union[Exception, Any, None]
 
 
 class DistributionResponseValidator(NamedTuple):
@@ -92,6 +94,18 @@ class ImpairmentConfigCommonEnable(BaseModel):
                     raise ValueError("it could not be none")
                 setattr(distribution_config, key, response_value)
 
+    def validate_response_and_load_value(self, responses: Dict[str, TypeExceptionAny]) -> None:
+        for distribution_name, response in responses.items():
+            if response is None or isinstance(response, Exception):
+                continue
+
+            distribution_config = getattr(self, distribution_name)
+            for key in distribution_config:
+                response_value = getattr(response, key, None)
+                if response_value is None:
+                    raise ValueError("it could not be none")
+                setattr(distribution_config, key, response_value)
+
 
 class Schedule(BaseModel):
     duration: int = 1
@@ -117,6 +131,16 @@ class ConstantDelay(DistributionConfigBase):
 
 class LatencyJitterConfigMain(ImpairmentConfigCommonEnableSchedule):
     constant_delay: ConstantDelay = ConstantDelay()
+
+    def get_distribution_commands(self, impairment: CLatencyJitterImpairment) -> Dict[str, Coroutine]:
+        commands = {}
+        for distribution_name in self.__fields__:
+            if distribution_name in ('enable', 'schedule'):
+                continue
+
+            distribution_command = getattr(impairment.distribution, distribution_name)
+            commands[distribution_name] = distribution_command.get()
+        return commands
 
 
 class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
