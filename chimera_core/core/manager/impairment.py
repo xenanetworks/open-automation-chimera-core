@@ -239,9 +239,9 @@ class ShadowFilterConfiguratorBasic:
             coroutines.extend([
                 self.basic_mode.vlan.settings.set(use=config.vlan.use, action=config.vlan.action),
                 self.basic_mode.vlan.inner.tag.set(
-                    use=config.vlan.use_tag_inner,
-                    value=config.vlan.value_tag_inner,
-                    mask=config.vlan.mask_tag_inner
+                    use=config.vlan.tag_inner.use,
+                    value=config.vlan.tag_inner.value,
+                    mask=f"0x{config.vlan.tag_inner.mask}",
                 ),
                 self.basic_mode.vlan.inner.pcp.set(
                     use=config.vlan.use_pcp_inner,

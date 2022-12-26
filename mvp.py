@@ -26,6 +26,7 @@ async def main():
         host=TESTER_IP_ADDRESS,
     )
 
+    await my_controller.add_tester(my_tester_credential)
     my_tester_info = await my_controller.list_testers()
     my_tester_info = my_tester_info[my_tester_credential.id]
 
@@ -38,7 +39,6 @@ async def main():
     await module.reserve_if_not()
     await module.config.set(module_current_config)
     module_current_config = await module.config.get()
-    logger.debug(module_current_config.comment)
 
     port_config = await port.config.get()
     await port.reserve_if_not()
@@ -55,17 +55,14 @@ async def main():
     current_filter_config.vlan.use = enums.FilterUse.AND
     current_filter_config.vlan.action = enums.InfoAction.INCLUDE
 
-    current_filter_config.vlan.use_tag_inner = enums.OnOff.ON
-    current_filter_config.vlan.value_tag_inner = 20
-    current_filter_config.vlan.mask_tag_inner = "0x0FFF"
+    current_filter_config.vlan.tag_inner.on(value=20, mask="0FFF")
+
 
     current_filter_config.vlan.use_pcp_inner = enums.OnOff.OFF
     current_filter_config.vlan.value_pcp_inner = 0
     current_filter_config.vlan.mask_pcp_inner = "0x07"
 
     current_filter_config.vlan.use_tag_outer = enums.OnOff.OFF
-    current_filter_config.vlan.value_tag_inner = 20
-    current_filter_config.vlan.mask_tag_inner = "0x0FFF"
 
     current_filter_config.vlan.use_pcp_inner = enums.OnOff.OFF
     current_filter_config.vlan.value_pcp_inner = 0
