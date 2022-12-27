@@ -244,19 +244,19 @@ class ShadowFilterConfiguratorBasic:
                     mask=f"0x{config.vlan.tag_inner.mask}",
                 ),
                 self.basic_mode.vlan.inner.pcp.set(
-                    use=config.vlan.use_pcp_inner,
-                    value=config.vlan.value_pcp_inner,
-                    mask=config.vlan.mask_pcp_inner
+                    use=config.vlan.pcp_inner.use,
+                    value=config.vlan.pcp_inner.value,
+                    mask=f"0x{config.vlan.pcp_inner.mask}",
                 ),
                 self.basic_mode.vlan.outer.tag.set(
-                    use=config.vlan.use_tag_outer,
-                    value=config.vlan.value_tag_outer,
-                    mask=config.vlan.mask_tag_outer,
+                    use=config.vlan.tag_outer.use,
+                    value=config.vlan.tag_outer.value,
+                    mask=f"0x{config.vlan.tag_outer.mask}",
                 ),
                 self.basic_mode.vlan.outer.pcp.set(
-                    use=config.vlan.use_pcp_outer,
-                    value=config.vlan.value_pcp_outer,
-                    mask=config.vlan.mask_pcp_outer,
+                    use=config.vlan.pcp_outer.use,
+                    value=config.vlan.pcp_outer.value,
+                    mask=f"0x{config.vlan.pcp_outer.mask}",
                 ),
             ])
 

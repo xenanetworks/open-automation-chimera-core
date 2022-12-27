@@ -55,18 +55,10 @@ async def main():
     current_filter_config.vlan.use = enums.FilterUse.AND
     current_filter_config.vlan.action = enums.InfoAction.INCLUDE
 
+    current_filter_config.vlan.pcp_inner.off()
     current_filter_config.vlan.tag_inner.on(value=20, mask="0FFF")
-
-
-    current_filter_config.vlan.use_pcp_inner = enums.OnOff.OFF
-    current_filter_config.vlan.value_pcp_inner = 0
-    current_filter_config.vlan.mask_pcp_inner = "0x07"
-
-    current_filter_config.vlan.use_tag_outer = enums.OnOff.OFF
-
-    current_filter_config.vlan.use_pcp_inner = enums.OnOff.OFF
-    current_filter_config.vlan.value_pcp_inner = 0
-    current_filter_config.vlan.mask_pcp_inner = "0x07"
+    current_filter_config.vlan.pcp_outer.off()
+    current_filter_config.vlan.tag_outer.off()
 
     await basic_filter_mode.set(current_filter_config)
     await flow.shadow_filter.enable(True)
