@@ -216,7 +216,7 @@ class InnerOuter(BaseModel):
     def on(self, value: int = 0, mask: str = FFF_HEX) -> None:
         self.use = enums.OnOff.ON
         self.value = value
-        self.mask = mask 
+        self.mask = mask
 
 
 class ShadowFilterConfigBasicVLAN(BaseModel):
@@ -228,6 +228,28 @@ class ShadowFilterConfigBasicVLAN(BaseModel):
     # outer
     tag_outer: InnerOuter = InnerOuter()
     pcp_outer: InnerOuter = InnerOuter()
+
+    def action_include(self) -> None:
+        self.action = enums.InfoAction.INCLUDE
+
+    def action_exclude(self) -> None:
+        self.action = enums.InfoAction.EXCLUDE
+
+    def use_and(self) -> None:
+        self.use = enums.FilterUse.AND
+
+    def use_off(self) -> None:
+        self.use = enums.FilterUse.OFF
+
+
+class UseL2Plus(BaseModel):
+    value: enums.L2PlusPresent = enums.L2PlusPresent.NA
+
+    def use_1_vlan_tag(self) -> None:
+        self.value = enums.L2PlusPresent.VLAN1
+
+    def use_2_vlan_tags(self) -> None:
+        self.value = enums.L2PlusPresent.VLAN2
 
 
 class ShadowFilterConfigBasic(BaseModel):
