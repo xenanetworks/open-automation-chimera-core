@@ -6,7 +6,7 @@ from xoa_driver import enums
 from chimera_core import controller, types
 
 
-TESTER_IP_ADDRESS = '87.61.110.118'
+TESTER_IP_ADDRESS = '192.168.1.201'
 
 
 async def subscribe(my_controller: controller.MainController, pipe: str) -> None:
@@ -31,8 +31,8 @@ async def main():
     my_tester_info = my_tester_info[my_tester_credential.id]
 
     tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False)
-    module = await tester_manager.use_module(module_id=2, reserve=False)
-    port = await tester_manager.use_port(module_id=2, port_id=0, reserve=False)
+    module = await tester_manager.use_module(module_id=0, reserve=False)
+    port = await tester_manager.use_port(module_id=0, port_id=0, reserve=False)
 
     module_current_config = await module.config.get()
     module_current_config.comment = 'new comment'
@@ -51,14 +51,13 @@ async def main():
     current_filter_config = await basic_filter_mode.get()
     logger.debug(current_filter_config)
 
-    current_filter_config.use_l2plus = enums.L2PlusPresent.VLAN1
-    current_filter_config.vlan.use_and()
-    current_filter_config.vlan.action_include()
-
-    current_filter_config.vlan.pcp_inner.off()
-    current_filter_config.vlan.tag_inner.on(value=20, mask="0FFF")
-    current_filter_config.vlan.pcp_outer.off()
-    current_filter_config.vlan.tag_outer.off()
+    vlan = current_filter_config.use_l2plus.use_1_vlan_tag()
+    vlan.use_and()
+    vlan.action_include()
+    vlan.pcp_inner.off()
+    vlan.tag_inner.on(value=20, mask="0FFF")
+    vlan.pcp_outer.off()
+    vlan.tag_outer.off()
 
     await basic_filter_mode.set(current_filter_config)
     await flow.shadow_filter.enable(True)

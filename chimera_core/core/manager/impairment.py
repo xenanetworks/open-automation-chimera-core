@@ -1,5 +1,16 @@
 import asyncio
-from typing import TYPE_CHECKING, Dict, Generic, NamedTuple, Optional, Protocol, Tuple, Type, TypeVar, Union, Any
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Generic,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    Any,
+)
 
 from loguru import logger
 from xoa_driver import utils, enums
@@ -11,6 +22,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 from .dataset import (
     DropConfigMain,
     DistributionResponseValidator,
+    InnerOuter,
     LatencyJitterConfigMain,
     Schedule,
     ShadowFilterConfigBasic,
@@ -23,6 +35,7 @@ from .dataset import (
     ShadowFilterConfigBasicIPv6Main,
     ShadowFilterConfigBasicIPv6SRCADDR,
     ShadowFilterConfigBasicVLAN,
+    UseL2Plus,
 )
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
@@ -114,8 +127,6 @@ class DropConfigurator(ImpairmentConfiguratorBase[CDropImpairment]):
         ))
 
 
-
-
 class ShadowFilterConfiguratorBasic:
     def __init__(self, filter_: "FilterDefinitionShadow", basic_mode: "ModeBasic"):
         self.shadow_filter = filter_
@@ -154,25 +165,33 @@ class ShadowFilterConfiguratorBasic:
             mask_dest_addr=dest_addr.mask,
 
         )
+        tag_inner = InnerOuter(
+            use=enums.OnOff(vlan_tag_inner.use),
+            value=vlan_tag_inner.value,
+            mask=vlan_tag_inner.mask,
+        )
+        tag_outer = InnerOuter(
+            use=enums.OnOff(vlan_tag_outer.use),
+            value=vlan_tag_outer.value,
+            mask=vlan_tag_outer.mask,
+        )
+        pcp_inner = InnerOuter(
+            use=enums.OnOff(vlan_pcp_inner.use),
+            value=vlan_pcp_outer.value,
+            mask=vlan_pcp_outer.mask,
+        )
+        pcp_outer = InnerOuter(
+            use=enums.OnOff(vlan_pcp_inner.use),
+            value=vlan_pcp_outer.value,
+            mask=vlan_pcp_outer.mask,
+        )
         config_vlan = ShadowFilterConfigBasicVLAN(
             use=enums.FilterUse(vlan.use),
             action=enums.InfoAction(vlan.action),
-
-            use_tag_inner=enums.OnOff(vlan_tag_inner.use),
-            value_tag_inner=vlan_tag_inner.value,
-            mask_tag_inner=vlan_tag_inner.mask,
-
-            use_pcp_inner=enums.OnOff(vlan_pcp_inner.use),
-            value_pcp_inner=vlan_pcp_inner.value,
-            mask_pcp_inner=vlan_pcp_inner.mask,
-
-            use_tag_outer=enums.OnOff(vlan_tag_outer.use),
-            value_tag_outer=vlan_tag_outer.value,
-            mask_tag_outer=vlan_tag_outer.mask,
-
-            use_pcp_outer=enums.OnOff(vlan_pcp_outer.use),
-            value_pcp_outer=vlan_pcp_outer.value,
-            mask_pcp_outer=vlan_pcp_outer.mask,
+            tag_inner=tag_inner,
+            tag_outer=tag_outer,
+            pcp_inner=pcp_inner,
+            pcp_outer=pcp_outer,
         )
         config_ipv4 = ShadowFilterConfigBasicIPv4Main(
             use=enums.FilterUse(ipv4.use),
@@ -208,10 +227,10 @@ class ShadowFilterConfiguratorBasic:
             ),
         )
 
+        use_l2plus = UseL2Plus(present=l2.use, vlan=config_vlan)
         config = ShadowFilterConfigBasic(
             ethernet=config_ethernet,
-            use_l2plus=enums.L2PlusPresent(l2.use),
-            vlan=config_vlan,
+            use_l2plus=use_l2plus,
             use_l3=enums.L3PlusPresent(l3.use),
             ipv4=config_ipv4,
             ipv6=config_ipv6,
@@ -231,32 +250,32 @@ class ShadowFilterConfiguratorBasic:
             #     value=config.ethernet.value_dest_addr,
             #     mask=config.ethernet.mask_dest_addr
             # ),
-            self.basic_mode.l2plus_use.set(use=config.use_l2plus),
+            self.basic_mode.l2plus_use.set(use=config.use_l2plus.present),
             self.basic_mode.l3_use.set(use=config.use_l3),
         ]
 
-        if config.use_l2plus != enums.L2PlusPresent.NA:
+        if config.use_l2plus.present != enums.L2PlusPresent.NA:
             coroutines.extend([
-                self.basic_mode.vlan.settings.set(use=config.vlan.use, action=config.vlan.action),
+                self.basic_mode.vlan.settings.set(use=config.use_l2plus.vlan.use, action=config.use_l2plus.vlan.action),
                 self.basic_mode.vlan.inner.tag.set(
-                    use=config.vlan.tag_inner.use,
-                    value=config.vlan.tag_inner.value,
-                    mask=f"0x{config.vlan.tag_inner.mask}",
+                    use=config.use_l2plus.vlan.tag_inner.use,
+                    value=config.use_l2plus.vlan.tag_inner.value,
+                    mask=f"0x{config.use_l2plus.vlan.tag_inner.mask}",
                 ),
                 self.basic_mode.vlan.inner.pcp.set(
-                    use=config.vlan.pcp_inner.use,
-                    value=config.vlan.pcp_inner.value,
-                    mask=f"0x{config.vlan.pcp_inner.mask}",
+                    use=config.use_l2plus.vlan.pcp_inner.use,
+                    value=config.use_l2plus.vlan.pcp_inner.value,
+                    mask=f"0x{config.use_l2plus.vlan.pcp_inner.mask}",
                 ),
                 self.basic_mode.vlan.outer.tag.set(
-                    use=config.vlan.tag_outer.use,
-                    value=config.vlan.tag_outer.value,
-                    mask=f"0x{config.vlan.tag_outer.mask}",
+                    use=config.use_l2plus.vlan.tag_outer.use,
+                    value=config.use_l2plus.vlan.tag_outer.value,
+                    mask=f"0x{config.use_l2plus.vlan.tag_outer.mask}",
                 ),
                 self.basic_mode.vlan.outer.pcp.set(
-                    use=config.vlan.pcp_outer.use,
-                    value=config.vlan.pcp_outer.value,
-                    mask=f"0x{config.vlan.pcp_outer.mask}",
+                    use=config.use_l2plus.vlan.pcp_outer.use,
+                    value=config.use_l2plus.vlan.pcp_outer.value,
+                    mask=f"0x{config.use_l2plus.vlan.pcp_outer.mask}",
                 ),
             ])
 

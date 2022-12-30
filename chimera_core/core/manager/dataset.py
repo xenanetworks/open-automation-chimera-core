@@ -243,19 +243,27 @@ class ShadowFilterConfigBasicVLAN(BaseModel):
 
 
 class UseL2Plus(BaseModel):
-    value: enums.L2PlusPresent = enums.L2PlusPresent.NA
+    present: enums.L2PlusPresent = enums.L2PlusPresent.NA
+    vlan: ShadowFilterConfigBasicVLAN = ShadowFilterConfigBasicVLAN()
 
-    def use_1_vlan_tag(self) -> None:
-        self.value = enums.L2PlusPresent.VLAN1
+    def use_none(self) -> None:
+        self.present = enums.L2PlusPresent.NA
 
-    def use_2_vlan_tags(self) -> None:
-        self.value = enums.L2PlusPresent.VLAN2
+    def use_1_vlan_tag(self) -> ShadowFilterConfigBasicVLAN:
+        self.present = enums.L2PlusPresent.VLAN1
+        return self.vlan
+
+    def use_2_vlan_tags(self) -> ShadowFilterConfigBasicVLAN:
+        self.present = enums.L2PlusPresent.VLAN2
+        return self.vlan
+
+    def use_mpls(self) -> None:
+        self.present = enums.L2PlusPresent.MPLS
 
 
 class ShadowFilterConfigBasic(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
-    use_l2plus: enums.L2PlusPresent = enums.L2PlusPresent.NA
-    vlan: ShadowFilterConfigBasicVLAN = ShadowFilterConfigBasicVLAN()
+    use_l2plus: UseL2Plus = UseL2Plus()
     use_l3: enums.L3PlusPresent = enums.L3PlusPresent.NA
     ipv4: ShadowFilterConfigBasicIPv4Main = ShadowFilterConfigBasicIPv4Main()
     ipv6: ShadowFilterConfigBasicIPv6Main = ShadowFilterConfigBasicIPv6Main()
