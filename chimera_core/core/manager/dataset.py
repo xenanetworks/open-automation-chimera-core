@@ -149,26 +149,21 @@ class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
     constant_delay: ConstantDelay = ConstantDelay()
 
 
-class ShadowFilterConfigBasicCommon(BaseModel):
-    use: enums.FilterUse = enums.FilterUse.OFF
-    action: enums.InfoAction = enums.InfoAction.INCLUDE
-
-
 class ShadowFilterConfigBasicSub(BaseModel):
     use: enums.OnOff = enums.OnOff.OFF
     value: int = 0
     mask: str = '0xff'
 
 
-class ShadowFilterConfigBasicIPv4SRCADDR(ShadowFilterConfigBasicSub):
+class ShadowFilterConfigL2IPv4SRCADDR(ShadowFilterConfigBasicSub):
     value: Union[str, int, ipaddress.IPv4Address] = '0.0.0.0'
 
 
-class ShadowFilterConfigBasicIPv4DESTADDR(ShadowFilterConfigBasicIPv4SRCADDR):
+class ShadowFilterConfigL2IPv4DESTADDR(ShadowFilterConfigL2IPv4SRCADDR):
     pass
 
 
-class ShadowFilterConfigBasicIPv4DSCP(ShadowFilterConfigBasicSub):
+class ShadowFilterConfigL2IPv4DSCP(ShadowFilterConfigBasicSub):
     pass
 
 
@@ -180,15 +175,10 @@ class ShadowFilterConfigBasicIPv6DESTADDR(ShadowFilterConfigBasicIPv6SRCADDR):
     pass
 
 
-class ShadowFilterConfigBasicIPv4Main(ShadowFilterConfigBasicCommon):
-    src_addr: ShadowFilterConfigBasicIPv4SRCADDR = ShadowFilterConfigBasicIPv4SRCADDR()
-    dest_addr: ShadowFilterConfigBasicIPv4DESTADDR = ShadowFilterConfigBasicIPv4DESTADDR()
-    dscp: ShadowFilterConfigBasicIPv4DSCP = ShadowFilterConfigBasicIPv4DSCP()
 
 
-class ShadowFilterConfigBasicIPv6Main(ShadowFilterConfigBasicCommon):
-    src_addr: ShadowFilterConfigBasicIPv6SRCADDR = ShadowFilterConfigBasicIPv6SRCADDR()
-    dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = ShadowFilterConfigBasicIPv6DESTADDR()
+
+
 
 
 class ShadowFilterConfigBasicEthernet(BaseModel):
@@ -219,15 +209,9 @@ class InnerOuter(BaseModel):
         self.mask = mask
 
 
-class ShadowFilterConfigBasicVLAN(BaseModel):
+class FilterConfigCommon(BaseModel):
     use: enums.FilterUse = enums.FilterUse.OFF
     action: enums.InfoAction = enums.InfoAction.INCLUDE
-    # inner
-    tag_inner: InnerOuter = InnerOuter()
-    pcp_inner: InnerOuter = InnerOuter()
-    # outer
-    tag_outer: InnerOuter = InnerOuter()
-    pcp_outer: InnerOuter = InnerOuter()
 
     def action_include(self) -> None:
         self.action = enums.InfoAction.INCLUDE
@@ -242,28 +226,59 @@ class ShadowFilterConfigBasicVLAN(BaseModel):
         self.use = enums.FilterUse.OFF
 
 
+class ShadowFilterConfigL2VLAN(FilterConfigCommon):
+    # inner
+    tag_inner: InnerOuter = InnerOuter()
+    pcp_inner: InnerOuter = InnerOuter()
+    # outer
+    tag_outer: InnerOuter = InnerOuter()
+    pcp_outer: InnerOuter = InnerOuter()
+
+
+class ShadowFilterConfigL2MPLS(FilterConfigCommon):
+    label: InnerOuter = InnerOuter()
+    toc: InnerOuter = InnerOuter()
+
+
 class UseL2Plus(BaseModel):
     present: enums.L2PlusPresent = enums.L2PlusPresent.NA
-    vlan: ShadowFilterConfigBasicVLAN = ShadowFilterConfigBasicVLAN()
+    vlan: ShadowFilterConfigL2VLAN = ShadowFilterConfigL2VLAN()
+    mpls: ShadowFilterConfigL2MPLS = ShadowFilterConfigL2MPLS()
 
     def use_none(self) -> None:
         self.present = enums.L2PlusPresent.NA
 
-    def use_1_vlan_tag(self) -> ShadowFilterConfigBasicVLAN:
+    def use_1_vlan_tag(self) -> ShadowFilterConfigL2VLAN:
         self.present = enums.L2PlusPresent.VLAN1
         return self.vlan
 
-    def use_2_vlan_tags(self) -> ShadowFilterConfigBasicVLAN:
+    def use_2_vlan_tags(self) -> ShadowFilterConfigL2VLAN:
         self.present = enums.L2PlusPresent.VLAN2
         return self.vlan
 
-    def use_mpls(self) -> None:
+    def use_mpls(self) -> ShadowFilterConfigL2MPLS:
         self.present = enums.L2PlusPresent.MPLS
+        return self.mpls
+
+
+class ShadowFilterConfigL3IPv4(FilterConfigCommon):
+    src_addr: ShadowFilterConfigL2IPv4SRCADDR = ShadowFilterConfigL2IPv4SRCADDR()
+    dest_addr: ShadowFilterConfigL2IPv4DESTADDR = ShadowFilterConfigL2IPv4DESTADDR()
+    dscp: ShadowFilterConfigL2IPv4DSCP = ShadowFilterConfigL2IPv4DSCP()
+
+
+class ShadowFilterConfigL3IPv6(FilterConfigCommon):
+    src_addr: ShadowFilterConfigBasicIPv6SRCADDR = ShadowFilterConfigBasicIPv6SRCADDR()
+    dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = ShadowFilterConfigBasicIPv6DESTADDR()
+
+
+class UseL3(BaseModel):
+    present: enums.L3PlusPresent = enums.L3PlusPresent.NA
+    ipv4: ShadowFilterConfigL3IPv4 = ShadowFilterConfigL3IPv4()
+    ipv6: ShadowFilterConfigL3IPv6 = ShadowFilterConfigL3IPv6()
 
 
 class ShadowFilterConfigBasic(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
     use_l2plus: UseL2Plus = UseL2Plus()
-    use_l3: enums.L3PlusPresent = enums.L3PlusPresent.NA
-    ipv4: ShadowFilterConfigBasicIPv4Main = ShadowFilterConfigBasicIPv4Main()
-    ipv6: ShadowFilterConfigBasicIPv6Main = ShadowFilterConfigBasicIPv6Main()
+    use_l3: UseL3 = UseL3()
