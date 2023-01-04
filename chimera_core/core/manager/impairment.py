@@ -229,12 +229,12 @@ class ShadowFilterConfiguratorBasic:
             action=enums.InfoAction(ipv6.action),
             src_addr=ShadowFilterConfigBasicIPv6SRCADDR(
                 use=enums.OnOff(ipv6_src_addr.use),
-                value=ipv6_src_addr.value,
+                value=str(ipv6_src_addr.value),
                 mask=ipv6_src_addr.mask,
             ),
             dest_addr=ShadowFilterConfigBasicIPv6DESTADDR(
                 use=enums.OnOff(ipv6_dest_addr.use),
-                value=ipv6_dest_addr.value,
+                value=str(ipv6_dest_addr.value),
                 mask=ipv6_dest_addr.mask,
             ),
         )
@@ -265,7 +265,7 @@ class ShadowFilterConfiguratorBasic:
             self.basic_mode.l3_use.set(use=config.use_l3.present),
         ]
 
-        if config.use_l2plus.present != enums.L2PlusPresent.NA:
+        if config.use_l2plus.present in (enums.L2PlusPresent.VLAN1, enums.L2PlusPresent.VLAN2):
             coroutines.extend([
                 self.basic_mode.vlan.settings.set(use=config.use_l2plus.vlan.use, action=config.use_l2plus.vlan.action),
                 self.basic_mode.vlan.inner.tag.set(
@@ -288,7 +288,10 @@ class ShadowFilterConfiguratorBasic:
                     value=config.use_l2plus.vlan.pcp_outer.value,
                     mask=f"0x{config.use_l2plus.vlan.pcp_outer.mask}",
                 ),
+            ])
 
+        elif config.use_l2plus.present == enums.L2PlusPresent.MPLS:
+            coroutines.extend([
                 self.basic_mode.mpls.settings.set(use=config.use_l2plus.mpls.use, action=config.use_l2plus.mpls.action),
                 self.basic_mode.mpls.label.set(
                     use=config.use_l2plus.mpls.label.use,
@@ -304,31 +307,31 @@ class ShadowFilterConfiguratorBasic:
 
         if config.use_l3 == enums.L3PlusPresent.IP4:
             coroutines.extend([
-                self.basic_mode.ip.v4.settings.set(use=config.ipv4.use, action=config.ipv4.action),
+                self.basic_mode.ip.v4.settings.set(use=config.use_l3.ipv4.use, action=config.use_l3.ipv4.action),
                 self.basic_mode.ip.v4.src_address.set(
-                    use=config.ipv4.src_addr.use,
-                    value=config.ipv4.src_addr.value,
-                    mask=config.ipv4.src_addr.mask,
+                    use=config.use_l3.ipv4.src_addr.use,
+                    value=config.use_l3.ipv4.src_addr.value,
+                    mask=config.use_l3.ipv4.src_addr.mask,
                 ),
                 self.basic_mode.ip.v4.dest_address.set(
-                    use=config.ipv4.dest_addr.use,
-                    value=config.ipv4.dest_addr.value,
-                    mask=config.ipv4.dest_addr.mask,
+                    use=config.use_l3.ipv4.dest_addr.use,
+                    value=config.use_l3.ipv4.dest_addr.value,
+                    mask=config.use_l3.ipv4.dest_addr.mask,
                 ),
             ])
 
         elif config.use_l3 == enums.L3PlusPresent.IP6:
             coroutines.extend([
-                self.basic_mode.ip.v6.settings.set(use=config.ipv6.use, action=config.ipv6.action),
+                self.basic_mode.ip.v6.settings.set(use=config.use_l3.ipv6.use, action=config.use_l3.ipv6.action),
                 self.basic_mode.ip.v6.src_address.set(
-                    use=config.ipv6.src_addr.use,
-                    value=config.ipv6.src_addr.value,
-                    mask=config.ipv6.src_addr.mask,
+                    use=config.use_l3.ipv6.src_addr.use,
+                    value=config.use_l3.ipv6.src_addr.value,
+                    mask=config.use_l3.ipv6.src_addr.mask,
                 ),
                 self.basic_mode.ip.v6.dest_address.set(
-                    use=config.ipv6.dest_addr.use,
-                    value=config.ipv6.dest_addr.value,
-                    mask=config.ipv6.dest_addr.mask,
+                    use=config.use_l3.ipv6.dest_addr.use,
+                    value=config.use_l3.ipv6.dest_addr.value,
+                    mask=config.use_l3.ipv6.dest_addr.mask,
                 ),
             ])
         # await asyncio.gather(*coroutines)

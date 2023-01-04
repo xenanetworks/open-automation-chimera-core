@@ -155,20 +155,8 @@ class ShadowFilterConfigBasicSub(BaseModel):
     mask: str = '0xff'
 
 
-class ShadowFilterConfigL2IPv4SRCADDR(ShadowFilterConfigBasicSub):
-    value: Union[str, int, ipaddress.IPv4Address] = '0.0.0.0'
-
-
-class ShadowFilterConfigL2IPv4DESTADDR(ShadowFilterConfigL2IPv4SRCADDR):
-    pass
-
-
-class ShadowFilterConfigL2IPv4DSCP(ShadowFilterConfigBasicSub):
-    pass
-
-
 class ShadowFilterConfigBasicIPv6SRCADDR(ShadowFilterConfigBasicSub):
-    value: Union[str, ipaddress.IPv6Address] = '0x00000000000000000000000000000000'
+    value: str = '0x00000000000000000000000000000000'
 
 
 class ShadowFilterConfigBasicIPv6DESTADDR(ShadowFilterConfigBasicIPv6SRCADDR):
@@ -261,6 +249,26 @@ class UseL2Plus(BaseModel):
         return self.mpls
 
 
+TypeIPv4 = Union[str, int, ipaddress.IPv4Address]
+
+
+class ShadowFilterConfigL2IPv4SRCADDR(InnerOuter):
+    value: TypeIPv4 = '0.0.0.0'
+
+    def on(self, value: TypeIPv4 = '0.0.0.0', mask: str = 'FFFFFFFF') -> None:
+        self.use = enums.OnOff.ON
+        self.value = value
+        self.mask = mask
+
+
+class ShadowFilterConfigL2IPv4DESTADDR(ShadowFilterConfigL2IPv4SRCADDR):
+    pass
+
+
+class ShadowFilterConfigL2IPv4DSCP(InnerOuter):
+    pass
+
+
 class ShadowFilterConfigL3IPv4(FilterConfigCommon):
     src_addr: ShadowFilterConfigL2IPv4SRCADDR = ShadowFilterConfigL2IPv4SRCADDR()
     dest_addr: ShadowFilterConfigL2IPv4DESTADDR = ShadowFilterConfigL2IPv4DESTADDR()
@@ -276,6 +284,17 @@ class UseL3(BaseModel):
     present: enums.L3PlusPresent = enums.L3PlusPresent.NA
     ipv4: ShadowFilterConfigL3IPv4 = ShadowFilterConfigL3IPv4()
     ipv6: ShadowFilterConfigL3IPv6 = ShadowFilterConfigL3IPv6()
+
+    def use_none(self) -> None:
+        self.present = enums.L3PlusPresent.NA
+
+    def use_ipv4(self) -> ShadowFilterConfigL3IPv4:
+        self.present = enums.L3PlusPresent.IP4
+        return self.ipv4
+
+    def use_ipv6(self) -> ShadowFilterConfigL3IPv6:
+        self.present = enums.L3PlusPresent.IP6
+        return self.ipv6
 
 
 class ShadowFilterConfigBasic(BaseModel):
