@@ -36,8 +36,10 @@ from .dataset import (
     ShadowFilterConfigBasicIPv6SRCADDR,
     ShadowFilterConfigL2MPLS,
     ShadowFilterConfigL2VLAN,
+    ShadowFilterConfigL4TCP,
     UseL2Plus,
     UseL3,
+    UseL4,
 )
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
@@ -136,7 +138,7 @@ class PInnerOuterGetDataAttr(Protocol):
 
 
 def generate_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
-    return InnerOuter(use=enums.OnOff(attr.use), value=attr.value, mask=attr.mask)
+    return InnerOuter(use=enums.OnOff(attr.use), value=attr.value, mask=attr.mask.replace('0x', ''))
 
 
 class ShadowFilterConfiguratorBasic:
@@ -147,7 +149,8 @@ class ShadowFilterConfiguratorBasic:
     async def get(self) -> ShadowFilterConfigBasic:
         ethernet, src_addr, dest_addr, \
             l2, vlan, vlan_tag_inner, vlan_pcp_inner, vlan_tag_outer, vlan_pcp_outer, mpls, mpls_label, mpls_toc, \
-            l3, ipv4, ipv4_src_addr, ipv4_dest_addr, ipv4_dscp, ipv6, ipv6_src_addr, ipv6_dest_addr = await asyncio.gather(*(
+            l3, ipv4, ipv4_src_addr, ipv4_dest_addr, ipv4_dscp, ipv6, ipv6_src_addr, ipv6_dest_addr, \
+            tcp, tcp_src_port, tcp_dest_port = await asyncio.gather(*(
                 self.basic_mode.ethernet.settings.get(),
                 self.basic_mode.ethernet.src_address.get(),
                 self.basic_mode.ethernet.dest_address.get(),
@@ -170,6 +173,10 @@ class ShadowFilterConfiguratorBasic:
                 self.basic_mode.ip.v6.settings.get(),
                 self.basic_mode.ip.v6.src_address.get(),
                 self.basic_mode.ip.v6.dest_address.get(),
+
+                self.basic_mode.tcp.settings.get(),
+                self.basic_mode.tcp.src_port.get(),
+                self.basic_mode.tcp.dest_port.get(),
             ))
 
         config_ethernet = ShadowFilterConfigBasicEthernet(
@@ -181,7 +188,6 @@ class ShadowFilterConfiguratorBasic:
             use_dest_addr=enums.OnOff(dest_addr.use),
             value_dest_addr=dest_addr.value,
             mask_dest_addr=dest_addr.mask,
-
         )
         tag_inner = generate_inner_outer(vlan_tag_inner)
         tag_outer = generate_inner_outer(vlan_tag_outer)
@@ -239,12 +245,22 @@ class ShadowFilterConfiguratorBasic:
             ),
         )
 
+        logger.debug(tcp_src_port)
+        logger.debug(tcp_dest_port)
+        config_tcp = ShadowFilterConfigL4TCP(
+            use=enums.FilterUse(tcp.use),
+            action=enums.InfoAction(tcp.action),
+            src_port=generate_inner_outer(tcp_src_port),
+            dest_port=generate_inner_outer(tcp_dest_port),
+        )
         use_l2plus = UseL2Plus(present=l2.use, vlan=config_vlan, mpls=config_mpls)
         use_l3 = UseL3(present=l3.use, ipv4=config_ipv4, ipv6=config_ipv6)
+        use_l4 = UseL4(tcp=config_tcp)
         config = ShadowFilterConfigBasic(
             ethernet=config_ethernet,
-            use_l2plus=use_l2plus,
-            use_l3=use_l3,
+            l2plus=use_l2plus,
+            l3=use_l3,
+            l4=use_l4,
         )
         return config
 
@@ -261,79 +277,110 @@ class ShadowFilterConfiguratorBasic:
             #     value=config.ethernet.value_dest_addr,
             #     mask=config.ethernet.mask_dest_addr
             # ),
-            self.basic_mode.l2plus_use.set(use=config.use_l2plus.present),
-            self.basic_mode.l3_use.set(use=config.use_l3.present),
+            self.basic_mode.l2plus_use.set(use=config.l2plus.present),
+            self.basic_mode.l3_use.set(use=config.l3.present),
         ]
 
-        if config.use_l2plus.present in (enums.L2PlusPresent.VLAN1, enums.L2PlusPresent.VLAN2):
+        if config.l2plus.present in (enums.L2PlusPresent.VLAN1, enums.L2PlusPresent.VLAN2):
             coroutines.extend([
-                self.basic_mode.vlan.settings.set(use=config.use_l2plus.vlan.use, action=config.use_l2plus.vlan.action),
+                self.basic_mode.vlan.settings.set(use=config.l2plus.vlan.use, action=config.l2plus.vlan.action),
                 self.basic_mode.vlan.inner.tag.set(
-                    use=config.use_l2plus.vlan.tag_inner.use,
-                    value=config.use_l2plus.vlan.tag_inner.value,
-                    mask=f"0x{config.use_l2plus.vlan.tag_inner.mask}",
+                    use=config.l2plus.vlan.tag_inner.use,
+                    value=config.l2plus.vlan.tag_inner.value,
+                    mask=f"0x{config.l2plus.vlan.tag_inner.mask}",
                 ),
                 self.basic_mode.vlan.inner.pcp.set(
-                    use=config.use_l2plus.vlan.pcp_inner.use,
-                    value=config.use_l2plus.vlan.pcp_inner.value,
-                    mask=f"0x{config.use_l2plus.vlan.pcp_inner.mask}",
+                    use=config.l2plus.vlan.pcp_inner.use,
+                    value=config.l2plus.vlan.pcp_inner.value,
+                    mask=f"0x{config.l2plus.vlan.pcp_inner.mask}",
                 ),
                 self.basic_mode.vlan.outer.tag.set(
-                    use=config.use_l2plus.vlan.tag_outer.use,
-                    value=config.use_l2plus.vlan.tag_outer.value,
-                    mask=f"0x{config.use_l2plus.vlan.tag_outer.mask}",
+                    use=config.l2plus.vlan.tag_outer.use,
+                    value=config.l2plus.vlan.tag_outer.value,
+                    mask=f"0x{config.l2plus.vlan.tag_outer.mask}",
                 ),
                 self.basic_mode.vlan.outer.pcp.set(
-                    use=config.use_l2plus.vlan.pcp_outer.use,
-                    value=config.use_l2plus.vlan.pcp_outer.value,
-                    mask=f"0x{config.use_l2plus.vlan.pcp_outer.mask}",
+                    use=config.l2plus.vlan.pcp_outer.use,
+                    value=config.l2plus.vlan.pcp_outer.value,
+                    mask=f"0x{config.l2plus.vlan.pcp_outer.mask}",
                 ),
             ])
 
-        elif config.use_l2plus.present == enums.L2PlusPresent.MPLS:
+        elif config.l2plus.present == enums.L2PlusPresent.MPLS:
             coroutines.extend([
-                self.basic_mode.mpls.settings.set(use=config.use_l2plus.mpls.use, action=config.use_l2plus.mpls.action),
+                self.basic_mode.mpls.settings.set(use=config.l2plus.mpls.use, action=config.l2plus.mpls.action),
                 self.basic_mode.mpls.label.set(
-                    use=config.use_l2plus.mpls.label.use,
-                    value=config.use_l2plus.mpls.label.value,
-                    mask=f"0x{config.use_l2plus.mpls.label.mask}",
+                    use=config.l2plus.mpls.label.use,
+                    value=config.l2plus.mpls.label.value,
+                    mask=f"0x{config.l2plus.mpls.label.mask}",
                 ),
                 self.basic_mode.mpls.toc.set(
-                    use=config.use_l2plus.mpls.toc.use,
-                    value=config.use_l2plus.mpls.toc.value,
-                    mask=f"0x{config.use_l2plus.mpls.toc.mask}",
+                    use=config.l2plus.mpls.toc.use,
+                    value=config.l2plus.mpls.toc.value,
+                    mask=f"0x{config.l2plus.mpls.toc.mask}",
                 ),
             ])
 
-        if config.use_l3 == enums.L3PlusPresent.IP4:
+        if config.l3 == enums.L3PlusPresent.IP4:
             coroutines.extend([
-                self.basic_mode.ip.v4.settings.set(use=config.use_l3.ipv4.use, action=config.use_l3.ipv4.action),
+                self.basic_mode.ip.v4.settings.set(use=config.l3.ipv4.use, action=config.l3.ipv4.action),
                 self.basic_mode.ip.v4.src_address.set(
-                    use=config.use_l3.ipv4.src_addr.use,
-                    value=config.use_l3.ipv4.src_addr.value,
-                    mask=config.use_l3.ipv4.src_addr.mask,
+                    use=config.l3.ipv4.src_addr.use,
+                    value=config.l3.ipv4.src_addr.value,
+                    mask=config.l3.ipv4.src_addr.mask,
                 ),
                 self.basic_mode.ip.v4.dest_address.set(
-                    use=config.use_l3.ipv4.dest_addr.use,
-                    value=config.use_l3.ipv4.dest_addr.value,
-                    mask=config.use_l3.ipv4.dest_addr.mask,
+                    use=config.l3.ipv4.dest_addr.use,
+                    value=config.l3.ipv4.dest_addr.value,
+                    mask=config.l3.ipv4.dest_addr.mask,
                 ),
             ])
 
-        elif config.use_l3 == enums.L3PlusPresent.IP6:
+        elif config.l3 == enums.L3PlusPresent.IP6:
             coroutines.extend([
-                self.basic_mode.ip.v6.settings.set(use=config.use_l3.ipv6.use, action=config.use_l3.ipv6.action),
+                self.basic_mode.ip.v6.settings.set(use=config.l3.ipv6.use, action=config.l3.ipv6.action),
                 self.basic_mode.ip.v6.src_address.set(
-                    use=config.use_l3.ipv6.src_addr.use,
-                    value=config.use_l3.ipv6.src_addr.value,
-                    mask=config.use_l3.ipv6.src_addr.mask,
+                    use=config.l3.ipv6.src_addr.use,
+                    value=config.l3.ipv6.src_addr.value,
+                    mask=config.l3.ipv6.src_addr.mask,
                 ),
                 self.basic_mode.ip.v6.dest_address.set(
-                    use=config.use_l3.ipv6.dest_addr.use,
-                    value=config.use_l3.ipv6.dest_addr.value,
-                    mask=config.use_l3.ipv6.dest_addr.mask,
+                    use=config.l3.ipv6.dest_addr.use,
+                    value=config.l3.ipv6.dest_addr.value,
+                    mask=config.l3.ipv6.dest_addr.mask,
                 ),
             ])
+
+        if not config.l4.tcp.is_off:
+            logger.debug(config.l4.tcp)
+            coroutines.extend([
+                self.basic_mode.tcp.settings.set(use=config.l4.tcp.use, action=config.l4.tcp.action),
+                self.basic_mode.tcp.src_port.set(
+                    use=config.l4.tcp.src_port.use,
+                    value=config.l4.tcp.src_port.value,
+                    mask=f"0x{config.l4.tcp.src_port.mask}",
+                ),
+                self.basic_mode.tcp.dest_port.set(
+                    use=config.l4.tcp.dest_port.use,
+                    value=config.l4.tcp.dest_port.value,
+                    mask=f"0x{config.l4.tcp.dest_port.mask}",
+                ),
+            ])
+        elif not config.l4.udp.is_off:
+            coroutines.extend([
+                self.basic_mode.udp.settings.set(use=config.l4.udp.use, action=config.l4.udp.action),
+                self.basic_mode.udp.src_port.set(
+                    use=config.l4.udp.src_port.use,
+                    value=config.l4.udp.src_port.value,
+                    mask=f"0x{config.l4.udp.src_port.mask}",
+                ),
+                self.basic_mode.udp.dest_port.set(
+                    use=config.l4.udp.dest_port.use,
+                    value=config.l4.udp.dest_port.value,
+                    mask=f"0x{config.l4.udp.dest_port.mask}",
+                ),
+            ])
+
         # await asyncio.gather(*coroutines)
         await utils.apply(*coroutines)
 

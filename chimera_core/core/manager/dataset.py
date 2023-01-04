@@ -155,20 +155,6 @@ class ShadowFilterConfigBasicSub(BaseModel):
     mask: str = '0xff'
 
 
-class ShadowFilterConfigBasicIPv6SRCADDR(ShadowFilterConfigBasicSub):
-    value: str = '0x00000000000000000000000000000000'
-
-
-class ShadowFilterConfigBasicIPv6DESTADDR(ShadowFilterConfigBasicIPv6SRCADDR):
-    pass
-
-
-
-
-
-
-
-
 class ShadowFilterConfigBasicEthernet(BaseModel):
     use: enums.FilterUse = enums.FilterUse.OFF
     action: enums.InfoAction = enums.InfoAction.INCLUDE
@@ -200,6 +186,10 @@ class InnerOuter(BaseModel):
 class FilterConfigCommon(BaseModel):
     use: enums.FilterUse = enums.FilterUse.OFF
     action: enums.InfoAction = enums.InfoAction.INCLUDE
+
+    @property
+    def is_off(self) -> bool:
+        return self.use == enums.FilterUse.OFF
 
     def action_include(self) -> None:
         self.action = enums.InfoAction.INCLUDE
@@ -275,6 +265,20 @@ class ShadowFilterConfigL3IPv4(FilterConfigCommon):
     dscp: ShadowFilterConfigL2IPv4DSCP = ShadowFilterConfigL2IPv4DSCP()
 
 
+class ShadowFilterConfigBasicIPv6SRCADDR(InnerOuter):
+    value: str = '::'
+    mask: str = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+
+    def on(self, value: str = '00000000000000000000000000000000', mask: str = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') -> None:
+        self.use = enums.OnOff.ON
+        self.value = value
+        self.mask = mask
+
+
+class ShadowFilterConfigBasicIPv6DESTADDR(ShadowFilterConfigBasicIPv6SRCADDR):
+    pass
+
+
 class ShadowFilterConfigL3IPv6(FilterConfigCommon):
     src_addr: ShadowFilterConfigBasicIPv6SRCADDR = ShadowFilterConfigBasicIPv6SRCADDR()
     dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = ShadowFilterConfigBasicIPv6DESTADDR()
@@ -297,7 +301,39 @@ class UseL3(BaseModel):
         return self.ipv6
 
 
+class ShadowFilterConfigL4UDPSRCPort(InnerOuter):
+    pass
+
+
+class ShadowFilterConfigL4UDPDESTPort(InnerOuter):
+    pass
+
+
+class ShadowFilterConfigL4TCP(FilterConfigCommon):
+    src_port: InnerOuter = InnerOuter()
+    dest_port: InnerOuter = InnerOuter()
+
+
+class ShadowFilterConfigL4UDP(ShadowFilterConfigL4TCP):
+    pass
+
+
+class UseL4(BaseModel):
+    tcp: ShadowFilterConfigL4TCP = ShadowFilterConfigL4TCP()
+    udp: ShadowFilterConfigL4UDP = ShadowFilterConfigL4UDP()
+
+    def use_none(self) -> None:
+        pass
+
+    def use_tcp(self) -> ShadowFilterConfigL4TCP:
+        return self.tcp
+
+    def use_udp(self) -> ShadowFilterConfigL4UDP:
+        return self.udp
+
+
 class ShadowFilterConfigBasic(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
-    use_l2plus: UseL2Plus = UseL2Plus()
-    use_l3: UseL3 = UseL3()
+    l2plus: UseL2Plus = UseL2Plus()
+    l3: UseL3 = UseL3()
+    l4: UseL4 = UseL4()
