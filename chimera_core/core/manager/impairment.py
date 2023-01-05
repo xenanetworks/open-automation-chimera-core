@@ -37,9 +37,12 @@ from .dataset import (
     ShadowFilterConfigL2MPLS,
     ShadowFilterConfigL2VLAN,
     ShadowFilterConfigL4TCP,
+    ShadowFilterConfigTPLD,
+    ShadowFilterConfigTPLDID,
     UseL2Plus,
     UseL3,
     UseL4,
+    UseXena,
 )
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
@@ -150,7 +153,8 @@ class ShadowFilterConfiguratorBasic:
         ethernet, src_addr, dest_addr, \
             l2, vlan, vlan_tag_inner, vlan_pcp_inner, vlan_tag_outer, vlan_pcp_outer, mpls, mpls_label, mpls_toc, \
             l3, ipv4, ipv4_src_addr, ipv4_dest_addr, ipv4_dscp, ipv6, ipv6_src_addr, ipv6_dest_addr, \
-            tcp, tcp_src_port, tcp_dest_port = await asyncio.gather(*(
+            tcp, tcp_src_port, tcp_dest_port, \
+            tpld, *tpld_id_settings = await asyncio.gather(*(
                 self.basic_mode.ethernet.settings.get(),
                 self.basic_mode.ethernet.src_address.get(),
                 self.basic_mode.ethernet.dest_address.get(),
@@ -177,6 +181,9 @@ class ShadowFilterConfiguratorBasic:
                 self.basic_mode.tcp.settings.get(),
                 self.basic_mode.tcp.src_port.get(),
                 self.basic_mode.tcp.dest_port.get(),
+
+                self.basic_mode.tpld.settings.get(),
+                *(self.basic_mode.tpld.test_payload_filters_config[i].get() for i in range(16)),
             ))
 
         config_ethernet = ShadowFilterConfigBasicEthernet(
@@ -245,8 +252,6 @@ class ShadowFilterConfiguratorBasic:
             ),
         )
 
-        logger.debug(tcp_src_port)
-        logger.debug(tcp_dest_port)
         config_tcp = ShadowFilterConfigL4TCP(
             use=enums.FilterUse(tcp.use),
             action=enums.InfoAction(tcp.action),
@@ -256,11 +261,19 @@ class ShadowFilterConfiguratorBasic:
         use_l2plus = UseL2Plus(present=l2.use, vlan=config_vlan, mpls=config_mpls)
         use_l3 = UseL3(present=l3.use, ipv4=config_ipv4, ipv6=config_ipv6)
         use_l4 = UseL4(tcp=config_tcp)
+
+        tpld_id_configs = []
+        for i, setting in enumerate(tpld_id_settings):
+            tpld_id_configs.append(ShadowFilterConfigTPLDID(filter_index=i, tpld_id=setting.id, use=setting.use))
+        tpld_id_configs = *tpld_id_configs,
+        use_xena = UseXena(tpld=ShadowFilterConfigTPLD(configs=tpld_id_configs))
+
         config = ShadowFilterConfigBasic(
             ethernet=config_ethernet,
             l2plus=use_l2plus,
             l3=use_l3,
             l4=use_l4,
+            xena=use_xena,
         )
         return config
 
@@ -379,6 +392,11 @@ class ShadowFilterConfiguratorBasic:
                     value=config.l4.udp.dest_port.value,
                     mask=f"0x{config.l4.udp.dest_port.mask}",
                 ),
+            ])
+
+        if not config.xena.tpld.is_off:
+            coroutines.extend([
+                self.basic_mode.tpld.settings.set(use=config.xena.tpld.use, action=config.xena.tpld.action),
             ])
 
         # await asyncio.gather(*coroutines)

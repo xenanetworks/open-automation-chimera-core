@@ -1,8 +1,9 @@
 import ipaddress
-from typing import Any, Callable, Coroutine, Dict, Generator, List, NamedTuple, Optional, Union
+from typing import Any, Callable, Coroutine, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
 from loguru import logger
 
 from pydantic import BaseModel
+from pydantic.fields import Field
 from xoa_driver import enums
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
@@ -332,8 +333,31 @@ class UseL4(BaseModel):
         return self.udp
 
 
+class ShadowFilterConfigTPLDID(BaseModel):
+    filter_index: int = Field(read_only=True)
+    tpld_id: int = 0
+    use: enums.OnOff = enums.OnOff.OFF
+
+    def on(self, tpld_id: int) -> None:
+        self.use = enums.OnOff.ON
+        self.tpld_id = tpld_id
+
+
+class ShadowFilterConfigTPLD(FilterConfigCommon):
+    configs: Tuple[ShadowFilterConfigTPLDID, ...] = tuple(ShadowFilterConfigTPLDID(filter_index=i) for i in range(16))
+
+
+class UseXena(BaseModel):
+    tpld: ShadowFilterConfigTPLD = ShadowFilterConfigTPLD()
+
+    def use_tpld(self) -> ShadowFilterConfigTPLD:
+        self.tpld.use_and()
+        return self.tpld
+
+
 class ShadowFilterConfigBasic(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
     l2plus: UseL2Plus = UseL2Plus()
     l3: UseL3 = UseL3()
     l4: UseL4 = UseL4()
+    xena: UseXena = UseXena()
