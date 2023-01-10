@@ -6,7 +6,7 @@ from xoa_driver import enums
 from chimera_core import controller, types
 
 
-TESTER_IP_ADDRESS = '192.168.1.201'
+TESTER_IP_ADDRESS = '87.61.110.118'
 
 
 async def subscribe(my_controller: controller.MainController, pipe: str) -> None:
@@ -31,14 +31,14 @@ async def main():
     my_tester_info = my_tester_info[my_tester_credential.id]
 
     tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False)
-    module = await tester_manager.use_module(module_id=0, reserve=False)
-    port = await tester_manager.use_port(module_id=0, port_id=0, reserve=False)
+    module = await tester_manager.use_module(module_id=2, reserve=False)
+    port = await tester_manager.use_port(module_id=2, port_id=3, reserve=False)
 
     module_current_config = await module.config.get()
     module_current_config.comment = 'new comment'
-    await module.reserve_if_not()
-    await module.config.set(module_current_config)
-    module_current_config = await module.config.get()
+    # await module.reserve_if_not()
+    # await module.config.set(module_current_config)
+    # module_current_config = await module.config.get()
 
     port_config = await port.config.get()
     await port.reserve_if_not()
@@ -67,10 +67,13 @@ async def main():
     # tcp.use_and()
     # tcp.action_include()
     # tcp.src_port.on(value=443, mask='ffff')
-    tpld = current_filter_config.xena.use_tpld()
+    tpld = current_filter_config.layer_xena.use_tpld()
     tpld.action_include()
-    tpld_id_config = tpld.configs[0]
+    tpld_id_config = tpld.configs[0]  # from 0 to 16
     tpld_id_config.on(tpld_id=0)
+
+    any_field = current_filter_config.layer_any.use_any_field()
+    any_field.filter_by(position=0, value='7F')
 
     await basic_filter_mode.set(current_filter_config)
     await flow.shadow_filter.enable(True)
@@ -90,7 +93,6 @@ async def main():
     drop_config.schedule.period = 5
     await flow.drop.set(drop_config)
     await flow.drop.enable(True)
-
 
     # chimera_session.fetch_statistics(p, use=True) # Add port for fetching statistics data from it
     # chimera_session.fetch_statistics(p, use=False) # remove port from fetching of the statistics

@@ -10,6 +10,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CL
 
 
 INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
+TPLD_FILTERS_LENGTH = 16
 
 
 class PortConfigPcsPmaBase(BaseModel):
@@ -219,7 +220,7 @@ class ShadowFilterConfigL2MPLS(FilterConfigCommon):
     toc: InnerOuter = InnerOuter()
 
 
-class UseL2Plus(BaseModel):
+class ShadowFilterLayer2Plus(BaseModel):
     present: enums.L2PlusPresent = enums.L2PlusPresent.NA
     vlan: ShadowFilterConfigL2VLAN = ShadowFilterConfigL2VLAN()
     mpls: ShadowFilterConfigL2MPLS = ShadowFilterConfigL2MPLS()
@@ -285,7 +286,7 @@ class ShadowFilterConfigL3IPv6(FilterConfigCommon):
     dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = ShadowFilterConfigBasicIPv6DESTADDR()
 
 
-class UseL3(BaseModel):
+class ShadowFilterLayer3(BaseModel):
     present: enums.L3PlusPresent = enums.L3PlusPresent.NA
     ipv4: ShadowFilterConfigL3IPv4 = ShadowFilterConfigL3IPv4()
     ipv6: ShadowFilterConfigL3IPv6 = ShadowFilterConfigL3IPv6()
@@ -319,7 +320,7 @@ class ShadowFilterConfigL4UDP(ShadowFilterConfigL4TCP):
     pass
 
 
-class UseL4(BaseModel):
+class ShadowFilterLayer4(BaseModel):
     tcp: ShadowFilterConfigL4TCP = ShadowFilterConfigL4TCP()
     udp: ShadowFilterConfigL4UDP = ShadowFilterConfigL4UDP()
 
@@ -347,7 +348,7 @@ class ShadowFilterConfigTPLD(FilterConfigCommon):
     configs: Tuple[ShadowFilterConfigTPLDID, ...] = tuple(ShadowFilterConfigTPLDID(filter_index=i) for i in range(16))
 
 
-class UseXena(BaseModel):
+class ShadowFilterLayerXena(BaseModel):
     tpld: ShadowFilterConfigTPLD = ShadowFilterConfigTPLD()
 
     def use_tpld(self) -> ShadowFilterConfigTPLD:
@@ -355,9 +356,36 @@ class UseXena(BaseModel):
         return self.tpld
 
 
-class ShadowFilterConfigBasic(BaseModel):
+class ShadowFilterConfigAnyField(FilterConfigCommon):
+    position: int = 0
+    value: str = '000000000000'
+    mask: str = 'FFFFFFFFFFFF'
+
+    def filter_by(self, position: int, value: str = '000000000000', mask: str = 'FFFFFFFFFFFF') -> None:
+        self.position = position
+        self.value = value
+        self.mask = mask
+
+
+class ShadowFilterLayerAny(FilterConfigCommon):
+    any_field: ShadowFilterConfigAnyField = ShadowFilterConfigAnyField()
+
+    def use_any_field(self) -> ShadowFilterConfigAnyField:
+        self.any_field.use_and()
+        return self.any_field
+
+
+class ShadowFilterLayer2(BaseModel):
     ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
-    l2plus: UseL2Plus = UseL2Plus()
-    l3: UseL3 = UseL3()
-    l4: UseL4 = UseL4()
-    xena: UseXena = UseXena()
+
+    def use_ethernet(self) -> ShadowFilterConfigBasicEthernet:
+        return self.ethernet
+
+
+class ShadowFilterConfigBasic(BaseModel):
+    layer_2: ShadowFilterLayer2 = ShadowFilterLayer2()
+    layer_2_plus: ShadowFilterLayer2Plus = ShadowFilterLayer2Plus()
+    layer_3: ShadowFilterLayer3 = ShadowFilterLayer3()
+    layer_4: ShadowFilterLayer4 = ShadowFilterLayer4()
+    layer_xena: ShadowFilterLayerXena = ShadowFilterLayerXena()
+    layer_any: ShadowFilterLayerAny = ShadowFilterLayerAny()
