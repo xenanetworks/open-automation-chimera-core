@@ -151,23 +151,6 @@ class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
     constant_delay: ConstantDelay = ConstantDelay()
 
 
-class ShadowFilterConfigBasicSub(BaseModel):
-    use: enums.OnOff = enums.OnOff.OFF
-    value: int = 0
-    mask: str = '0xff'
-
-
-class ShadowFilterConfigBasicEthernet(BaseModel):
-    use: enums.FilterUse = enums.FilterUse.OFF
-    action: enums.InfoAction = enums.InfoAction.INCLUDE
-    use_src_addr: enums.OnOff = enums.OnOff.OFF
-    value_src_addr: str = "0x000000000000"
-    mask_src_addr: str = "0xFFFFFFFFFFFF"
-    use_dest_addr: enums.OnOff = enums.OnOff.OFF
-    value_dest_addr: str = "0x000000000000"
-    mask_dest_addr: str = "0xFFFFFFFFFFFF"
-
-
 FFF_HEX = 'FFF'
 
 
@@ -193,17 +176,33 @@ class FilterConfigCommon(BaseModel):
     def is_off(self) -> bool:
         return self.use == enums.FilterUse.OFF
 
-    def action_include(self) -> None:
+    def include(self) -> None:
+        self.use = enums.FilterUse.AND
         self.action = enums.InfoAction.INCLUDE
 
-    def action_exclude(self) -> None:
+    def exclude(self) -> None:
+        self.use = enums.FilterUse.AND
         self.action = enums.InfoAction.EXCLUDE
 
-    def use_and(self) -> None:
+    def _use_and(self) -> None:
         self.use = enums.FilterUse.AND
 
-    def use_off(self) -> None:
+    def _use_off(self) -> None:
         self.use = enums.FilterUse.OFF
+
+
+class ShadowFilterConfigEthernetAddr(InnerOuter):
+    value: str = '000000000000'
+
+    def on(self, value: str = '000000000000', mask: str = 'FFFFFFFFFFFF') -> None:
+        self.use = enums.OnOff.ON
+        self.value = value
+        self.mask = mask
+
+
+class ShadowFilterConfigEthernet(FilterConfigCommon):
+    src_addr: ShadowFilterConfigEthernetAddr = ShadowFilterConfigEthernetAddr()
+    dest_addr: ShadowFilterConfigEthernetAddr = ShadowFilterConfigEthernetAddr()
 
 
 class ShadowFilterConfigL2VLAN(FilterConfigCommon):
@@ -244,7 +243,7 @@ class ShadowFilterLayer2Plus(BaseModel):
 TypeIPv4 = Union[str, int, ipaddress.IPv4Address]
 
 
-class ShadowFilterConfigL2IPv4SRCADDR(InnerOuter):
+class ShadowFilterConfigL2IPv4Addr(InnerOuter):
     value: TypeIPv4 = '0.0.0.0'
 
     def on(self, value: TypeIPv4 = '0.0.0.0', mask: str = 'FFFFFFFF') -> None:
@@ -253,17 +252,13 @@ class ShadowFilterConfigL2IPv4SRCADDR(InnerOuter):
         self.mask = mask
 
 
-class ShadowFilterConfigL2IPv4DESTADDR(ShadowFilterConfigL2IPv4SRCADDR):
-    pass
-
-
 class ShadowFilterConfigL2IPv4DSCP(InnerOuter):
     pass
 
 
 class ShadowFilterConfigL3IPv4(FilterConfigCommon):
-    src_addr: ShadowFilterConfigL2IPv4SRCADDR = ShadowFilterConfigL2IPv4SRCADDR()
-    dest_addr: ShadowFilterConfigL2IPv4DESTADDR = ShadowFilterConfigL2IPv4DESTADDR()
+    src_addr: ShadowFilterConfigL2IPv4Addr = ShadowFilterConfigL2IPv4Addr()
+    dest_addr: ShadowFilterConfigL2IPv4Addr = ShadowFilterConfigL2IPv4Addr()
     dscp: ShadowFilterConfigL2IPv4DSCP = ShadowFilterConfigL2IPv4DSCP()
 
 
@@ -352,7 +347,7 @@ class ShadowFilterLayerXena(BaseModel):
     tpld: ShadowFilterConfigTPLD = ShadowFilterConfigTPLD()
 
     def use_tpld(self) -> ShadowFilterConfigTPLD:
-        self.tpld.use_and()
+        self.tpld._use_and()
         return self.tpld
 
 
@@ -361,7 +356,7 @@ class ShadowFilterConfigAnyField(FilterConfigCommon):
     value: str = '000000000000'
     mask: str = 'FFFFFFFFFFFF'
 
-    def filter_by(self, position: int, value: str = '000000000000', mask: str = 'FFFFFFFFFFFF') -> None:
+    def on(self, position: int, value: str = '000000000000', mask: str = 'FFFFFFFFFFFF') -> None:
         self.position = position
         self.value = value
         self.mask = mask
@@ -371,14 +366,14 @@ class ShadowFilterLayerAny(FilterConfigCommon):
     any_field: ShadowFilterConfigAnyField = ShadowFilterConfigAnyField()
 
     def use_any_field(self) -> ShadowFilterConfigAnyField:
-        self.any_field.use_and()
+        self.any_field._use_and()
         return self.any_field
 
 
 class ShadowFilterLayer2(BaseModel):
-    ethernet: ShadowFilterConfigBasicEthernet = ShadowFilterConfigBasicEthernet()
+    ethernet: ShadowFilterConfigEthernet = ShadowFilterConfigEthernet()
 
-    def use_ethernet(self) -> ShadowFilterConfigBasicEthernet:
+    def use_ethernet(self) -> ShadowFilterConfigEthernet:
         return self.ethernet
 
 

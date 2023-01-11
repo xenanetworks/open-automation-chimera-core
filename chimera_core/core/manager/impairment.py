@@ -28,11 +28,11 @@ from .dataset import (
     Schedule,
     ShadowFilterConfigAnyField,
     ShadowFilterConfigBasic,
-    ShadowFilterConfigBasicEthernet,
-    ShadowFilterConfigL2IPv4DESTADDR,
+    ShadowFilterConfigEthernet,
+    ShadowFilterConfigEthernetAddr,
     ShadowFilterConfigL2IPv4DSCP,
     ShadowFilterConfigL3IPv4,
-    ShadowFilterConfigL2IPv4SRCADDR,
+    ShadowFilterConfigL2IPv4Addr,
     ShadowFilterConfigBasicIPv6DESTADDR,
     ShadowFilterConfigL3IPv6,
     ShadowFilterConfigBasicIPv6SRCADDR,
@@ -195,16 +195,21 @@ class ShadowFilterConfiguratorBasic:
 
             ))
 
-        config_ethernet = ShadowFilterConfigBasicEthernet(
+        config_ethernet = ShadowFilterConfigEthernet(
             use=enums.FilterUse(ethernet.use),
             action=enums.InfoAction(ethernet.action),
-            use_src_addr=enums.OnOff(src_addr.use),
-            value_src_addr=src_addr.value,
-            mask_src_addr=src_addr.mask,
-            use_dest_addr=enums.OnOff(dest_addr.use),
-            value_dest_addr=dest_addr.value,
-            mask_dest_addr=dest_addr.mask,
+            src_addr=ShadowFilterConfigEthernetAddr(
+                use=enums.OnOff(ipv4_dest_addr.use),
+                value=ipv4_dest_addr.value,
+                mask=ipv4_dest_addr.mask,
+            ),
+            dest_addr=ShadowFilterConfigEthernetAddr(
+                use=enums.OnOff(ipv4_dest_addr.use),
+                value=ipv4_dest_addr.value,
+                mask=ipv4_dest_addr.mask,
+            ),
         )
+
         tag_inner = generate_inner_outer(vlan_tag_inner)
         tag_outer = generate_inner_outer(vlan_tag_outer)
         pcp_inner = generate_inner_outer(vlan_pcp_inner)
@@ -230,12 +235,12 @@ class ShadowFilterConfiguratorBasic:
         config_ipv4 = ShadowFilterConfigL3IPv4(
             use=enums.FilterUse(ipv4.use),
             action=enums.InfoAction(ipv4.action),
-            src_addr=ShadowFilterConfigL2IPv4SRCADDR(
+            src_addr=ShadowFilterConfigL2IPv4Addr(
                 use=enums.OnOff(ipv4_src_addr.use),
                 value=ipv4_src_addr.value,
                 mask=ipv4_src_addr.mask,
             ),
-            dest_addr=ShadowFilterConfigL2IPv4DESTADDR(
+            dest_addr=ShadowFilterConfigL2IPv4Addr(
                 use=enums.OnOff(ipv4_dest_addr.use),
                 value=ipv4_dest_addr.value,
                 mask=ipv4_dest_addr.mask,
@@ -278,7 +283,9 @@ class ShadowFilterConfiguratorBasic:
         use_xena = ShadowFilterLayerXena(tpld=ShadowFilterConfigTPLD(use=enums.FilterUse(tpld.use), action=enums.InfoAction(tpld.action), configs=tpld_id_configs))
 
         config_any = ShadowFilterLayerAny(
-            any_field=ShadowFilterConfigAnyField(position=any_field.posittion, value=any_field.value, mask=any_field.mask)
+            use=enums.FilterUse(any_.use),
+            action=enums.InfoAction(any_.action),
+            any_field=ShadowFilterConfigAnyField(position=any_field.posittion, value=any_field.value, mask=any_field.mask),
         )
         config = ShadowFilterConfigBasic(
             layer_2=ShadowFilterLayer2(ethernet=config_ethernet),
