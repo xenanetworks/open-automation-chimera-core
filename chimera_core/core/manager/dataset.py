@@ -162,9 +162,9 @@ class InnerOuter(BaseModel):
     def off(self) -> None:
         self.use = enums.OnOff.OFF
 
-    def on(self, value: int = 0, mask: str = FFF_HEX) -> None:
+    def on(self, port: int = 0, mask: str = FFF_HEX) -> None:
         self.use = enums.OnOff.ON
-        self.value = value
+        self.value = port
         self.mask = mask
 
 
@@ -246,9 +246,9 @@ TypeIPv4 = Union[str, int, ipaddress.IPv4Address]
 class ShadowFilterConfigL2IPv4Addr(InnerOuter):
     value: TypeIPv4 = '0.0.0.0'
 
-    def on(self, value: TypeIPv4 = '0.0.0.0', mask: str = 'FFFFFFFF') -> None:
+    def on(self, address: TypeIPv4 = '0.0.0.0', mask: str = 'FFFFFFFF') -> None:
         self.use = enums.OnOff.ON
-        self.value = value
+        self.value = address
         self.mask = mask
 
 
@@ -384,3 +384,7 @@ class ShadowFilterConfigBasic(BaseModel):
     layer_4: ShadowFilterLayer4 = ShadowFilterLayer4()
     layer_xena: ShadowFilterLayerXena = ShadowFilterLayerXena()
     layer_any: ShadowFilterLayerAny = ShadowFilterLayerAny()
+
+
+class ShadowFilterConfigExtended(BaseModel):
+    protocol_segments: Any = None

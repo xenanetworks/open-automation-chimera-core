@@ -17,7 +17,7 @@ from xoa_driver import utils, enums
 from xoa_driver.v2 import misc
 from xoa_driver.lli import commands
 
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic, ModeExtended
 
 from .dataset import (
     TPLD_FILTERS_LENGTH,
@@ -30,6 +30,7 @@ from .dataset import (
     ShadowFilterConfigBasic,
     ShadowFilterConfigEthernet,
     ShadowFilterConfigEthernetAddr,
+    ShadowFilterConfigExtended,
     ShadowFilterConfigL2IPv4DSCP,
     ShadowFilterConfigL3IPv4,
     ShadowFilterConfigL2IPv4Addr,
@@ -146,6 +147,15 @@ class PInnerOuterGetDataAttr(Protocol):
 
 def generate_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
     return InnerOuter(use=enums.OnOff(attr.use), value=attr.value, mask=attr.mask.replace('0x', ''))
+
+
+class ShadowFilterConfiguratorExtended:
+    def __init__(self, filter_: "FilterDefinitionShadow", extended_mode: "ModeExtended"):
+        self.shadow_filter = filter_
+        self.extended_mode = extended_mode
+
+    async def get(self) -> ShadowFilterConfigExtended:
+        return ShadowFilterConfigExtended()
 
 
 class ShadowFilterConfiguratorBasic:
@@ -450,6 +460,13 @@ class ShadowFilterManager:
         if not isinstance(mode, ModeBasic):
             raise ValueError("Not base mode")
         return ShadowFilterConfiguratorBasic(self.filter, mode)
+
+    async def use_extended_mode(self) -> "ShadowFilterConfiguratorExtended":
+        await self.filter.use_extended_mode()
+        mode = await self.filter.get_mode()
+        if not isinstance(mode, ModeExtended):
+            raise ValueError("Not extended mode")
+        return ShadowFilterConfiguratorExtended(self.filter, mode)
 
     async def enable(self, state: bool) -> None:
         await self.filter.enable.set(enums.OnOff(state))

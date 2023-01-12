@@ -60,31 +60,31 @@ async def main():
     vlan = current_filter_config.layer_2_plus.use_1_vlan_tag()
     vlan.include()
     vlan.pcp_inner.off()
-    vlan.tag_inner.on(value=20, mask="0FFF")
+    vlan.tag_inner.on(port=20, mask="0FFF")
     vlan.pcp_outer.off()
     vlan.tag_outer.off()
 
     # layer 3
     ipv4 = current_filter_config.layer_3.use_ipv4()
-    ipv4.src_addr.on(value='192.168.1.160')
-    ipv4.dest_addr.on(value='192.168.1.161')
-    ipv4.include()
+    ipv4.src_addr.on(address='192.168.1.160')
+    ipv4.dest_addr.on(address='192.168.1.161')
 
     # layer 4
     tcp = current_filter_config.layer_4.use_tcp()
-    tcp.src_port.on(value=443, mask='ffff')
-    tcp.include()
+    tcp.src_port.on(port=443, mask='ffff')
 
     # layer xena
     tpld = current_filter_config.layer_xena.use_tpld()
-    tpld.include()
     tpld_id_config = tpld.configs[0]  # from 0 to 16
     tpld_id_config.on(tpld_id=0)
 
     # layer any
     any_field = current_filter_config.layer_any.use_any_field()
     any_field.on(position=0, value='7F')
-    any_field.include()
+
+    # maybe?
+    # current_filter_config.filter_include(vlan, ipv4)
+    # current_filter_config.filter_exclude(ethernet)
 
     await basic_filter_mode.set(current_filter_config)
     await flow.shadow_filter.enable(True)
