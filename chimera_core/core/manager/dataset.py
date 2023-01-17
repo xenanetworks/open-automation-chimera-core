@@ -1,5 +1,7 @@
 import ipaddress
-from typing import Any, Callable, Coroutine, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
+from typing import Any, Callable, Coroutine, Dict, Generator, List, NamedTuple, Optional, Protocol, Tuple, Union
+from enum import Enum
+from functools import partial
 from loguru import logger
 
 from pydantic import BaseModel
@@ -162,33 +164,36 @@ class InnerOuter(BaseModel):
     def off(self) -> None:
         self.use = enums.OnOff.OFF
 
-    def on(self, port: int = 0, mask: str = FFF_HEX) -> None:
+    def on(self, value: int = 0, mask: str = FFF_HEX) -> None:
         self.use = enums.OnOff.ON
-        self.value = port
+        self.value = value
         self.mask = mask
 
 
 class FilterConfigCommon(BaseModel):
-    use: enums.FilterUse = enums.FilterUse.OFF
-    action: enums.InfoAction = enums.InfoAction.INCLUDE
+    filter_use: enums.FilterUse = enums.FilterUse.OFF
+    match_action: enums.InfoAction = enums.InfoAction.INCLUDE
 
     @property
     def is_off(self) -> bool:
-        return self.use == enums.FilterUse.OFF
+        return self.filter_use == enums.FilterUse.OFF
 
     def include(self) -> None:
-        self.use = enums.FilterUse.AND
-        self.action = enums.InfoAction.INCLUDE
+        self.filter_use = enums.FilterUse.AND
+        self.match_action = enums.InfoAction.INCLUDE
 
     def exclude(self) -> None:
-        self.use = enums.FilterUse.AND
-        self.action = enums.InfoAction.EXCLUDE
+        self.filter_use = enums.FilterUse.AND
+        self.match_action = enums.InfoAction.EXCLUDE
 
     def _use_and(self) -> None:
-        self.use = enums.FilterUse.AND
+        self.filter_use = enums.FilterUse.AND
 
     def _use_off(self) -> None:
-        self.use = enums.FilterUse.OFF
+        self.filter_use = enums.FilterUse.OFF
+
+    def action(self, include=True):
+        self.match_action = enums.InfoAction.INCLUDE if include else enums.InfoAction.EXCLUDE
 
 
 class ShadowFilterConfigEthernetAddr(InnerOuter):
@@ -384,6 +389,25 @@ class ShadowFilterConfigBasic(BaseModel):
     layer_4: ShadowFilterLayer4 = ShadowFilterLayer4()
     layer_xena: ShadowFilterLayerXena = ShadowFilterLayerXena()
     layer_any: ShadowFilterLayerAny = ShadowFilterLayerAny()
+
+
+class SegmentType(Enum):
+    ETHERNET = "ethernet"
+    TCP = "tcp"
+
+
+class ProtocolSegement(BaseModel):
+    segment_type: SegmentType
+    value: str
+    mask: str
+
+
+def create_protocol_segment(segment_type: SegmentType, value: str, mask: str) -> "ProtocolSegement":
+    return ProtocolSegement(segment_type=segment_type, value=value, mask=mask)
+
+
+ethernet = partial(create_protocol_segment, SegmentType.ETHERNET)
+tcp = partial(create_protocol_segment, SegmentType.TCP)
 
 
 class ShadowFilterConfigExtended(BaseModel):

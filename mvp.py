@@ -47,6 +47,10 @@ async def main():
 
     flow = port.flows[1]
     await flow.shadow_filter.reset()
+    extended_filter_mode = await flow.shadow_filter.use_extended_mode()
+    current_filter_config = await extended_filter_mode.get()
+    current_filter_config.protocol_segments
+    return None
     basic_filter_mode = await flow.shadow_filter.use_basic_mode()  # or use_extend_mode()
     current_filter_config = await basic_filter_mode.get()
     logger.debug(current_filter_config)
@@ -54,24 +58,23 @@ async def main():
     # layer 2
     ethernet = current_filter_config.layer_2.use_ethernet()
     ethernet.src_addr.on(value='00FF1F9BBE95')
-    ethernet.include()
 
     # layer 2 plus
-    vlan = current_filter_config.layer_2_plus.use_1_vlan_tag()
-    vlan.include()
+    vlan = current_filter_config.layer_2_plus.use_2_vlan_tags()
     vlan.pcp_inner.off()
-    vlan.tag_inner.on(port=20, mask="0FFF")
+    vlan.tag_inner.on(value=20, mask="0FFF")
     vlan.pcp_outer.off()
     vlan.tag_outer.off()
+    vlan.action(include=True)
 
     # layer 3
     ipv4 = current_filter_config.layer_3.use_ipv4()
     ipv4.src_addr.on(address='192.168.1.160')
-    ipv4.dest_addr.on(address='192.168.1.161')
+    ipv4.dest_addr.on('192.168.1.161')
 
     # layer 4
     tcp = current_filter_config.layer_4.use_tcp()
-    tcp.src_port.on(port=443, mask='ffff')
+    tcp.src_port.on(443)
 
     # layer xena
     tpld = current_filter_config.layer_xena.use_tpld()
@@ -82,11 +85,6 @@ async def main():
     any_field = current_filter_config.layer_any.use_any_field()
     any_field.on(position=0, value='7F')
 
-    # maybe?
-    # current_filter_config.filter_include(vlan, ipv4)
-    # current_filter_config.filter_exclude(ethernet)
-
-    await basic_filter_mode.set(current_filter_config)
     await flow.shadow_filter.enable(True)
 
     latency_jtter_config = await flow.latency_jitter.get()

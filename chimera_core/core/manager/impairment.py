@@ -206,8 +206,8 @@ class ShadowFilterConfiguratorBasic:
             ))
 
         config_ethernet = ShadowFilterConfigEthernet(
-            use=enums.FilterUse(ethernet.use),
-            action=enums.InfoAction(ethernet.action),
+            filter_use=enums.FilterUse(ethernet.use),
+            match_action=enums.InfoAction(ethernet.action),
             src_addr=ShadowFilterConfigEthernetAddr(
                 use=enums.OnOff(ipv4_dest_addr.use),
                 value=ipv4_dest_addr.value,
@@ -225,8 +225,8 @@ class ShadowFilterConfiguratorBasic:
         pcp_inner = generate_inner_outer(vlan_pcp_inner)
         pcp_outer = generate_inner_outer(vlan_pcp_outer)
         config_vlan = ShadowFilterConfigL2VLAN(
-            use=enums.FilterUse(vlan.use),
-            action=enums.InfoAction(vlan.action),
+            filter_use=enums.FilterUse(vlan.use),
+            match_action=enums.InfoAction(vlan.action),
             tag_inner=tag_inner,
             tag_outer=tag_outer,
             pcp_inner=pcp_inner,
@@ -236,15 +236,15 @@ class ShadowFilterConfiguratorBasic:
         config_mpls_label = generate_inner_outer(mpls_label)
         config_mpls_toc = generate_inner_outer(mpls_toc)
         config_mpls = ShadowFilterConfigL2MPLS(
-            use=enums.FilterUse(mpls.use),
-            action=enums.InfoAction(mpls.action),
+            filter_use=enums.FilterUse(mpls.use),
+            match_action=enums.InfoAction(mpls.action),
             label=config_mpls_label,
             toc=config_mpls_toc,
         )
 
         config_ipv4 = ShadowFilterConfigL3IPv4(
-            use=enums.FilterUse(ipv4.use),
-            action=enums.InfoAction(ipv4.action),
+            filter_use=enums.FilterUse(ipv4.use),
+            match_action=enums.InfoAction(ipv4.action),
             src_addr=ShadowFilterConfigL2IPv4Addr(
                 use=enums.OnOff(ipv4_src_addr.use),
                 value=ipv4_src_addr.value,
@@ -262,8 +262,8 @@ class ShadowFilterConfiguratorBasic:
             ),
         )
         config_ipv6 = ShadowFilterConfigL3IPv6(
-            use=enums.FilterUse(ipv6.use),
-            action=enums.InfoAction(ipv6.action),
+            filter_use=enums.FilterUse(ipv6.use),
+            match_action=enums.InfoAction(ipv6.action),
             src_addr=ShadowFilterConfigBasicIPv6SRCADDR(
                 use=enums.OnOff(ipv6_src_addr.use),
                 value=str(ipv6_src_addr.value),
@@ -277,8 +277,8 @@ class ShadowFilterConfiguratorBasic:
         )
 
         config_tcp = ShadowFilterConfigL4TCP(
-            use=enums.FilterUse(tcp.use),
-            action=enums.InfoAction(tcp.action),
+            filter_use=enums.FilterUse(tcp.use),
+            match_action=enums.InfoAction(tcp.action),
             src_port=generate_inner_outer(tcp_src_port),
             dest_port=generate_inner_outer(tcp_dest_port),
         )
@@ -290,11 +290,11 @@ class ShadowFilterConfiguratorBasic:
         for i, setting in enumerate(tpld_id_settings):
             tpld_id_configs.append(ShadowFilterConfigTPLDID(filter_index=i, tpld_id=setting.id, use=setting.use))
         tpld_id_configs = *tpld_id_configs,
-        use_xena = ShadowFilterLayerXena(tpld=ShadowFilterConfigTPLD(use=enums.FilterUse(tpld.use), action=enums.InfoAction(tpld.action), configs=tpld_id_configs))
+        use_xena = ShadowFilterLayerXena(tpld=ShadowFilterConfigTPLD(filter_use=enums.FilterUse(tpld.use), match_action=enums.InfoAction(tpld.action), configs=tpld_id_configs))
 
         config_any = ShadowFilterLayerAny(
-            use=enums.FilterUse(any_.use),
-            action=enums.InfoAction(any_.action),
+            filter_use=enums.FilterUse(any_.use),
+            match_action=enums.InfoAction(any_.action),
             any_field=ShadowFilterConfigAnyField(position=any_field.posittion, value=any_field.value, mask=any_field.mask),
         )
         config = ShadowFilterConfigBasic(
@@ -326,7 +326,7 @@ class ShadowFilterConfiguratorBasic:
 
         if config.layer_2_plus.present in (enums.L2PlusPresent.VLAN1, enums.L2PlusPresent.VLAN2):
             coroutines.extend([
-                self.basic_mode.vlan.settings.set(use=config.layer_2_plus.vlan.use, action=config.layer_2_plus.vlan.action),
+                self.basic_mode.vlan.settings.set(use=config.layer_2_plus.vlan.filter_use, action=config.layer_2_plus.vlan.match_action),
                 self.basic_mode.vlan.inner.tag.set(
                     use=config.layer_2_plus.vlan.tag_inner.use,
                     value=config.layer_2_plus.vlan.tag_inner.value,
@@ -351,7 +351,7 @@ class ShadowFilterConfiguratorBasic:
 
         elif config.layer_2_plus.present == enums.L2PlusPresent.MPLS:
             coroutines.extend([
-                self.basic_mode.mpls.settings.set(use=config.layer_2_plus.mpls.use, action=config.layer_2_plus.mpls.action),
+                self.basic_mode.mpls.settings.set(use=config.layer_2_plus.mpls.filter_use, action=config.layer_2_plus.mpls.match_action),
                 self.basic_mode.mpls.label.set(
                     use=config.layer_2_plus.mpls.label.use,
                     value=config.layer_2_plus.mpls.label.value,
@@ -366,7 +366,7 @@ class ShadowFilterConfiguratorBasic:
 
         if config.layer_3 == enums.L3PlusPresent.IP4:
             coroutines.extend([
-                self.basic_mode.ip.v4.settings.set(use=config.layer_3.ipv4.use, action=config.layer_3.ipv4.action),
+                self.basic_mode.ip.v4.settings.set(use=config.layer_3.ipv4.filter_use, action=config.layer_3.ipv4.match_action),
                 self.basic_mode.ip.v4.src_address.set(
                     use=config.layer_3.ipv4.src_addr.use,
                     value=config.layer_3.ipv4.src_addr.value,
@@ -381,7 +381,7 @@ class ShadowFilterConfiguratorBasic:
 
         elif config.layer_3 == enums.L3PlusPresent.IP6:
             coroutines.extend([
-                self.basic_mode.ip.v6.settings.set(use=config.layer_3.ipv6.use, action=config.layer_3.ipv6.action),
+                self.basic_mode.ip.v6.settings.set(use=config.layer_3.ipv6.filter_use, action=config.layer_3.ipv6.match_action),
                 self.basic_mode.ip.v6.src_address.set(
                     use=config.layer_3.ipv6.src_addr.use,
                     value=config.layer_3.ipv6.src_addr.value,
@@ -397,7 +397,7 @@ class ShadowFilterConfiguratorBasic:
         if not config.layer_4.tcp.is_off:
             logger.debug(config.layer_4.tcp)
             coroutines.extend([
-                self.basic_mode.tcp.settings.set(use=config.layer_4.tcp.use, action=config.layer_4.tcp.action),
+                self.basic_mode.tcp.settings.set(use=config.layer_4.tcp.filter_use, action=config.layer_4.tcp.match_action),
                 self.basic_mode.tcp.src_port.set(
                     use=config.layer_4.tcp.src_port.use,
                     value=config.layer_4.tcp.src_port.value,
@@ -411,7 +411,7 @@ class ShadowFilterConfiguratorBasic:
             ])
         elif not config.layer_4.udp.is_off:
             coroutines.extend([
-                self.basic_mode.udp.settings.set(use=config.layer_4.udp.use, action=config.layer_4.udp.action),
+                self.basic_mode.udp.settings.set(use=config.layer_4.udp.filter_use, action=config.layer_4.udp.match_action),
                 self.basic_mode.udp.src_port.set(
                     use=config.layer_4.udp.src_port.use,
                     value=config.layer_4.udp.src_port.value,
@@ -426,7 +426,7 @@ class ShadowFilterConfiguratorBasic:
 
         if not config.layer_xena.tpld.is_off:
             coroutines.extend([
-                self.basic_mode.tpld.settings.set(use=config.layer_xena.tpld.use, action=config.layer_xena.tpld.action),
+                self.basic_mode.tpld.settings.set(use=config.layer_xena.tpld.filter_use, action=config.layer_xena.tpld.match_action),
                 *(
                     tpld_filter.set(use=config.layer_xena.tpld.configs[i].use, id=config.layer_xena.tpld.configs[i].tpld_id)
                     for i, tpld_filter in enumerate(self.basic_mode.tpld.test_payload_filters_config)
@@ -435,7 +435,7 @@ class ShadowFilterConfiguratorBasic:
             ])
         if not config.layer_any.any_field.is_off:
             coroutines.extend([
-                self.basic_mode.any.settings.set(use=config.layer_any.any_field.use, action=config.layer_any.any_field.action),
+                self.basic_mode.any.settings.set(use=config.layer_any.any_field.filter_use, action=config.layer_any.any_field.match_action),
                 self.basic_mode.any.config.set(
                     position=config.layer_any.any_field.position,
                     value=config.layer_any.any_field.value,
