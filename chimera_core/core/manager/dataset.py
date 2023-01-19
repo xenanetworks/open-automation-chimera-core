@@ -391,24 +391,11 @@ class ShadowFilterConfigBasic(BaseModel):
     layer_any: ShadowFilterLayerAny = ShadowFilterLayerAny()
 
 
-class SegmentType(Enum):
-    ETHERNET = "ethernet"
-    TCP = "tcp"
-
-
 class ProtocolSegement(BaseModel):
-    segment_type: SegmentType
+    protocol_type: enums.ProtocolOption
     value: str
     mask: str
 
 
-def create_protocol_segment(segment_type: SegmentType, value: str, mask: str) -> "ProtocolSegement":
-    return ProtocolSegement(segment_type=segment_type, value=value, mask=mask)
-
-
-ethernet = partial(create_protocol_segment, SegmentType.ETHERNET)
-tcp = partial(create_protocol_segment, SegmentType.TCP)
-
-
 class ShadowFilterConfigExtended(BaseModel):
-    protocol_segments: Any = None
+    protocol_segments: Tuple[ProtocolSegement, ...] = tuple()

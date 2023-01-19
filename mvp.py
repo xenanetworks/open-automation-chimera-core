@@ -1,9 +1,12 @@
 import asyncio
+from pypacker.layer3 import ip
+
 
 from loguru import logger
 from xoa_driver import enums
 
 from chimera_core import controller, types
+from chimera_core.core.manager.dataset import ProtocolSegement
 
 
 TESTER_IP_ADDRESS = '87.61.110.118'
@@ -32,7 +35,7 @@ async def main():
 
     tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False)
     module = await tester_manager.use_module(module_id=2, reserve=False)
-    port = await tester_manager.use_port(module_id=2, port_id=3, reserve=False)
+    port = await tester_manager.use_port(module_id=2, port_id=1, reserve=False)
 
     module_current_config = await module.config.get()
     module_current_config.comment = 'new comment'
@@ -46,10 +49,17 @@ async def main():
     await port.config.set(port_config)
 
     flow = port.flows[1]
-    await flow.shadow_filter.reset()
+    # await flow.shadow_filter.reset()
     extended_filter_mode = await flow.shadow_filter.use_extended_mode()
     current_filter_config = await extended_filter_mode.get()
-    current_filter_config.protocol_segments
+    logger.debug(current_filter_config)
+
+    ip_packet = ip.IP(src_s="192.168.2.100")
+    current_filter_config.protocol_segments = (
+        *current_filter_config.protocol_segments,
+        ProtocolSegement(protocol_type=enums.ProtocolOption.IP, value=ip_packet.bin().hex(), mask='0000')
+    )
+    await extended_filter_mode.set(current_filter_config)
     return None
     basic_filter_mode = await flow.shadow_filter.use_basic_mode()  # or use_extend_mode()
     current_filter_config = await basic_filter_mode.get()

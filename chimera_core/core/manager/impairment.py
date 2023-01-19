@@ -17,7 +17,8 @@ from xoa_driver import utils, enums
 from xoa_driver.v2 import misc
 from xoa_driver.lli import commands
 
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic, ModeExtended
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import ModeExtendedS
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
 from .dataset import (
     TPLD_FILTERS_LENGTH,
@@ -25,6 +26,7 @@ from .dataset import (
     DistributionResponseValidator,
     InnerOuter,
     LatencyJitterConfigMain,
+    ProtocolSegement,
     Schedule,
     ShadowFilterConfigAnyField,
     ShadowFilterConfigBasic,
@@ -150,12 +152,29 @@ def generate_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
 
 
 class ShadowFilterConfiguratorExtended:
-    def __init__(self, filter_: "FilterDefinitionShadow", extended_mode: "ModeExtended"):
+    def __init__(self, filter_: "FilterDefinitionShadow", extended_mode: "ModeExtendedS"):
         self.shadow_filter = filter_
         self.extended_mode = extended_mode
 
     async def get(self) -> ShadowFilterConfigExtended:
-        return ShadowFilterConfigExtended()
+        protocol_types = await self.extended_mode.get_protocol_segments()
+        segments_data = await asyncio.gather(*(
+            utils.apply(
+                proto.value.get(),
+                proto.mask.get(),
+            ) for proto in protocol_types
+        ))
+        protocol_segments = []
+        for data in zip(protocol_types, segments_data):
+            value = ''.join(h.replace('0x', '') for h in data[1][0].value)
+            mask = ''.join(h.replace('0x', '') for h in data[1][1].masks)
+            protocol_segments.append(
+                ProtocolSegement(protocol_type=data[0].segment_type, value=value, mask=mask)
+            )
+        return ShadowFilterConfigExtended(protocol_segments=tuple(protocol_segments))
+
+    async def set(self, config: ShadowFilterConfigExtended) -> None:
+        await self.extended_mode.use_segments(*(proto.protocol_type for proto in config.protocol_segments[:1]))
 
 
 class ShadowFilterConfiguratorBasic:
@@ -457,15 +476,13 @@ class ShadowFilterManager:
     async def use_basic_mode(self) -> "ShadowFilterConfiguratorBasic":
         await self.filter.use_basic_mode()
         mode = await self.filter.get_mode()
-        if not isinstance(mode, ModeBasic):
-            raise ValueError("Not base mode")
+        assert isinstance(mode, ModeBasic), "Not base mode"
         return ShadowFilterConfiguratorBasic(self.filter, mode)
 
     async def use_extended_mode(self) -> "ShadowFilterConfiguratorExtended":
         await self.filter.use_extended_mode()
         mode = await self.filter.get_mode()
-        if not isinstance(mode, ModeExtended):
-            raise ValueError("Not extended mode")
+        assert isinstance(mode, ModeExtendedS), "Not extended mode"
         return ShadowFilterConfiguratorExtended(self.filter, mode)
 
     async def enable(self, state: bool) -> None:
