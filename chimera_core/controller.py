@@ -71,11 +71,12 @@ class MainController:
         """
         await self.__resources.remove_tester(tester_id)
 
-    async def use(self, credentials: "credentials.Credentials", username: str = "chimera_core", reserve: bool = False) -> "TesterManager":
+    async def use(self, credentials: "credentials.Credentials", username: str = "chimera_core", reserve: bool = False, debug: bool = False) -> "TesterManager":
         if not (tester_instance := self.__testers.get(username)):
             tester_instance = await self.__resources.get_testers_by_id(
                 testers_ids=[credentials.id],
                 username=username,
+                debug=debug,
             )[credentials.id]
 
             assert isinstance(tester_instance, L23Tester), 'Invalid tester.'

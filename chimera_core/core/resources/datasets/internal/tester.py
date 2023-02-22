@@ -38,7 +38,6 @@ class TesterModel:
     max_password_len: int = 0 # used by UI validation (Tester Password) & config validation
 
     async def on_evt_reserved_by(self, response) -> None:
-        print(response)
         self.reserved_by = response.values.username
 
     async def on_evt_disconnected(self, *_) -> None:

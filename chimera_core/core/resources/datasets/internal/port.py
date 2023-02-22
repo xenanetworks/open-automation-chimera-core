@@ -56,8 +56,8 @@ class PortModel:
     async def on_evt_sync_status(self, _, value) -> None:
         self.sync_status = enums.SyncStatus(value.sync_status) is enums.SyncStatus.IN_SYNC
 
-    async def on_evt_reserved_by(self, _, value) -> None:
-        self.reserved_by = value.username
+    async def on_evt_reserved_by(self, _, response) -> None:
+        self.reserved_by = response.username
 
     @classmethod
     async def from_port(cls: Type[P], port: "ports.GenericAnyPort", notifier: Callable) -> P:

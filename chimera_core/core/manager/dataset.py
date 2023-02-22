@@ -1,7 +1,7 @@
 import ipaddress
-from typing import Any, Callable, Coroutine, Dict, Generator, List, NamedTuple, Optional, Protocol, Tuple, Union
+from typing import Any, Callable, Coroutine, Dict, Generator, List, NamedTuple, Optional, Protocol, Tuple, Type, TypeVar, Union
 from enum import Enum
-from functools import partial
+from functools import partial, partialmethod
 from loguru import logger
 
 from pydantic import BaseModel
@@ -60,7 +60,7 @@ TypeExceptionAny = Union[Exception, Any, None]
 
 
 class DistributionResponseValidator(NamedTuple):
-    """If query get command not return NOTVALID, the command was being set"""
+    """If get command return NOTVALID, the config was not being set"""
     fixed_burst: TypeExceptionAny = None
     random: TypeExceptionAny = None
     fixed: TypeExceptionAny = None
@@ -76,39 +76,20 @@ class DistributionResponseValidator(NamedTuple):
     step: TypeExceptionAny = None
 
     @property
-    def enabled_distribution(self) -> Optional[str]:
+    def filter_valid_distribution(self) -> Generator[Tuple[str, Any], None, None]:
+        """for those normal token respsonse"""
         for command_name in self._fields:
-            command_response = getattr(self, command_name)
-            if command_response is None or isinstance(command_response, Exception):
-                continue
-            return command_name
+            if (command_response := getattr(self, command_name)) and not isinstance(command_response, Exception):
+                yield command_name, command_response
 
 
 class ImpairmentConfigCommonEnable(BaseModel):
     enable: enums.OnOff = enums.OnOff.OFF
 
-    def load_value_from_validator(self, validator: DistributionResponseValidator) -> None:
-        if (enabled_distribution_name := validator.enabled_distribution):
-            logger.debug(enabled_distribution_name)
-            distribution_config = getattr(self, enabled_distribution_name)
-            distribution_response = getattr(validator, enabled_distribution_name)
-            for key in distribution_config:
-                response_value = getattr(distribution_response, key, None)
-                if response_value is None:
-                    raise ValueError("it could not be none")
-                setattr(distribution_config, key, response_value)
-
-    def validate_response_and_load_value(self, responses: Dict[str, TypeExceptionAny]) -> None:
-        for distribution_name, response in responses.items():
-            if response is None or isinstance(response, Exception):
-                continue
-
-            distribution_config = getattr(self, distribution_name)
-            for key in distribution_config:
-                response_value = getattr(response, key, None)
-                if response_value is None:
-                    raise ValueError("it could not be none")
-                setattr(distribution_config, key, response_value)
+    def load_distribution_value(self, validator: DistributionResponseValidator) -> None:
+        for distribution_name, distribution_response in validator.filter_valid_distribution:
+            distribution_config: DistributionConfigBase = getattr(self, distribution_name)
+            distribution_config.load_server_value(distribution_response)
 
 
 class Schedule(BaseModel):
@@ -124,9 +105,60 @@ class DistributionConfigBase(BaseModel):
     def __iter__(self):
         return iter(self.__fields__)
 
+    def load_server_value(self, distribution_token_response: Any) -> None:
+        for field_name in self:
+            if (value := getattr(distribution_token_response, field_name)):
+                setattr(self, field_name, value)
+            else:
+                raise ValueError(f'{self} {field_name} could not be None')
+
 
 class FixedBurst(DistributionConfigBase):
     burst_size: int = 0
+
+
+class RandomBurst(DistributionConfigBase):
+    minimum: int = 0
+    maximum: int = 0
+    probability: int = 0
+
+
+class FixedRate(DistributionConfigBase):
+    probability: int = 0
+
+
+class GilbertElliot(DistributionConfigBase):
+    good_state_prob: int = 0
+    good_state_trans_prob: int = 0
+    bad_prob: int = 0
+    bad_state_trans_prob: int = 0
+
+
+class Uniform(DistributionConfigBase):
+    minimum: int = 0
+    maximum: int = 0
+
+
+class Gaussian(DistributionConfigBase):
+    mean: int = 0
+    std_deviation: int = 0
+
+
+class Gamma(DistributionConfigBase):
+    shape: int = 0
+    scale: int = 0
+
+
+class Poisson(DistributionConfigBase):
+    mean: int = 0
+
+
+class Custom(DistributionConfigBase):
+    cust_id: int = 0
+
+
+class BitErrorRate(DistributionConfigBase):
+    probability: int = 0
 
 
 class ConstantDelay(DistributionConfigBase):
@@ -136,22 +168,17 @@ class ConstantDelay(DistributionConfigBase):
 class LatencyJitterConfigMain(ImpairmentConfigCommonEnableSchedule):
     constant_delay: ConstantDelay = ConstantDelay()
 
-    def get_distribution_commands(self, impairment: CLatencyJitterImpairment) -> Dict[str, Coroutine]:
-        commands = {}
-        for distribution_name in self.__fields__:
-            if distribution_name in ('enable', 'schedule'):
-                continue
 
-            distribution_command = getattr(impairment.distribution, distribution_name)
-            commands[distribution_name] = distribution_command.get()
-        return commands
+T = TypeVar('T', bound=Union[FixedBurst, RandomBurst])
+class ImpairmentDropConfigMain(ImpairmentConfigCommonEnableSchedule):
+    distribution: Optional[DistributionConfigBase] = None
 
 
-class DropConfigMain(ImpairmentConfigCommonEnableSchedule):
-    current_dist: str = ''
-    fixed_burst: FixedBurst = FixedBurst()
-    constant_delay: ConstantDelay = ConstantDelay()
+    def select_distribution(self, distribution: T) -> T:
+        self.distribution = distribution
+        return distribution
 
+    select_fixed_burst = partialmethod(select_distribution, FixedBurst())
 
 FFF_HEX = 'FFF'
 

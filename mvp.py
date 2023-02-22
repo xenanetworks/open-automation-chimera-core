@@ -50,17 +50,16 @@ async def main():
 
     flow = port.flows[1]
     # await flow.shadow_filter.reset()
-    extended_filter_mode = await flow.shadow_filter.use_extended_mode()
-    current_filter_config = await extended_filter_mode.get()
-    logger.debug(current_filter_config)
+    # extended_filter_mode = await flow.shadow_filter.use_extended_mode()
+    # current_filter_config = await extended_filter_mode.get()
+    # logger.debug(current_filter_config)
 
-    ip_packet = ip.IP(src_s="192.168.2.100")
-    current_filter_config.protocol_segments = (
-        *current_filter_config.protocol_segments,
-        ProtocolSegement(protocol_type=enums.ProtocolOption.IP, value=ip_packet.bin().hex(), mask='0000')
-    )
-    await extended_filter_mode.set(current_filter_config)
-    return None
+    # ip_packet = ip.IP(src_s="192.168.2.100")
+    # current_filter_config.protocol_segments = (
+    #     *current_filter_config.protocol_segments,
+    #     ProtocolSegement(protocol_type=enums.ProtocolOption.IP, value=ip_packet.bin().hex(), mask='0000')
+    # )
+    # await extended_filter_mode.set(current_filter_config)
     basic_filter_mode = await flow.shadow_filter.use_basic_mode()  # or use_extend_mode()
     current_filter_config = await basic_filter_mode.get()
     logger.debug(current_filter_config)

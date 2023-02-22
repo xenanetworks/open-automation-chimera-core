@@ -22,7 +22,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 
 from .dataset import (
     TPLD_FILTERS_LENGTH,
-    DropConfigMain,
+    ImpairmentDropConfigMain,
     DistributionResponseValidator,
     InnerOuter,
     LatencyJitterConfigMain,
@@ -106,14 +106,15 @@ class LatencyJitterConfigurator(ImpairmentConfiguratorBase[CLatencyJitterImpairm
         ))
 
 
-class DropConfigurator(ImpairmentConfiguratorBase[CDropImpairment]):
+class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
     def __init__(self, impairment: "CDropImpairment"):
         self.impairment = impairment
 
-    async def get(self) -> DropConfigMain:
-        enable, schedule = await self._get_enable_and_schedule()
+    async def get(self) -> ImpairmentDropConfigMain:
+        enable, schedule, *distributions = await asyncio.gather(*(
+            self.impairment.enable.get(),
+            self.impairment.schedule.get(),
 
-        distributions = await asyncio.gather(*(
             self.impairment.distribution.fixed_burst.get(),
             self.impairment.distribution.random.get(),
             self.impairment.distribution.fixed.get(),
@@ -126,15 +127,14 @@ class DropConfigurator(ImpairmentConfiguratorBase[CDropImpairment]):
             self.impairment.distribution.custom.get(),
         ), return_exceptions=True)
 
-        config = DropConfigMain(
+        config = ImpairmentDropConfigMain(
             enable=enums.OnOff(enable.action),
             schedule=Schedule(duration=schedule.duration, period=schedule.period),
         )
-        drv = DistributionResponseValidator(*distributions)
-        config.load_value_from_validator(drv)
+        config.load_distribution_value(DistributionResponseValidator(*distributions))
         return config
 
-    async def set(self, config: DropConfigMain):
+    async def set(self, config: ImpairmentDropConfigMain):
         await asyncio.gather(*(
             self.impairment.schedule.set(duration=config.schedule.duration, period=config.schedule.period),
             self.impairment.distribution.fixed_burst.set(burst_size=config.fixed_burst.burst_size),
@@ -152,7 +152,7 @@ def generate_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
 
 
 class ShadowFilterConfiguratorExtended:
-    def __init__(self, filter_: "FilterDefinitionShadow", extended_mode: "ModeExtendedS"):
+    def __init__(self, filter_: "FilterDefinitionShadow", extended_mode: "ModeExtendedS") -> None:
         self.shadow_filter = filter_
         self.extended_mode = extended_mode
 
@@ -216,25 +216,28 @@ class ShadowFilterConfiguratorBasic:
                 self.basic_mode.tcp.src_port.get(),
                 self.basic_mode.tcp.dest_port.get(),
 
+                # b'XENA\x00\x02\x00\x01c\xc2\x02\x00\x00\x00\x00\x96\x00\x00\x00\x01\x00\x00\x00\x00\x01\xfc\x97q'
+                # b'XENA\x00\x02\x00\x01c\xc2\x02\x00\x00\x00\x00\x94\x00\x00\x00\x01\x00\x00\x00\x00\x01\xb8\x92q'
+                # self.basic_mode.tcp.settings.get(),
                 self.basic_mode.tpld.settings.get(),
                 *(self.basic_mode.tpld.test_payload_filters_config[i].get() for i in range(TPLD_FILTERS_LENGTH)),
 
                 self.basic_mode.any.settings.get(),
                 self.basic_mode.any.config.get(),
 
-            ))
+            ), return_exceptions=True)
 
         config_ethernet = ShadowFilterConfigEthernet(
             filter_use=enums.FilterUse(ethernet.use),
             match_action=enums.InfoAction(ethernet.action),
             src_addr=ShadowFilterConfigEthernetAddr(
                 use=enums.OnOff(ipv4_dest_addr.use),
-                value=ipv4_dest_addr.value,
+                value=str(ipv4_dest_addr.value),
                 mask=ipv4_dest_addr.mask,
             ),
             dest_addr=ShadowFilterConfigEthernetAddr(
                 use=enums.OnOff(ipv4_dest_addr.use),
-                value=ipv4_dest_addr.value,
+                value=str(ipv4_dest_addr.value),
                 mask=ipv4_dest_addr.mask,
             ),
         )
@@ -309,12 +312,16 @@ class ShadowFilterConfiguratorBasic:
         for i, setting in enumerate(tpld_id_settings):
             tpld_id_configs.append(ShadowFilterConfigTPLDID(filter_index=i, tpld_id=setting.id, use=setting.use))
         tpld_id_configs = *tpld_id_configs,
-        use_xena = ShadowFilterLayerXena(tpld=ShadowFilterConfigTPLD(filter_use=enums.FilterUse(tpld.use), match_action=enums.InfoAction(tpld.action), configs=tpld_id_configs))
+        use_xena = ShadowFilterLayerXena(
+            tpld=ShadowFilterConfigTPLD(
+                match_action=enums.InfoAction(tpld.action),
+                configs=tpld_id_configs),
+            )
 
         config_any = ShadowFilterLayerAny(
             filter_use=enums.FilterUse(any_.use),
             match_action=enums.InfoAction(any_.action),
-            any_field=ShadowFilterConfigAnyField(position=any_field.posittion, value=any_field.value, mask=any_field.mask),
+            any_field=ShadowFilterConfigAnyField(position=any_field.position, value=any_field.value, mask=any_field.mask),
         )
         config = ShadowFilterConfigBasic(
             layer_2=ShadowFilterLayer2(ethernet=config_ethernet),
