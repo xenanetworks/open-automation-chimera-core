@@ -1,5 +1,5 @@
 import ipaddress
-from typing import Any, Callable, Coroutine, Dict, Generator, List, NamedTuple, Optional, Protocol, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Coroutine, Dict, Generator, Generic, List, NamedTuple, Optional, Protocol, Tuple, Type, TypeVar, Union, cast
 from enum import Enum
 from functools import partial, partialmethod
 from loguru import logger
@@ -77,18 +77,19 @@ class DistributionResponseValidator(NamedTuple):
 
     @property
     def filter_valid_distribution(self) -> Generator[Tuple[str, Any], None, None]:
-        """for those normal token respsonse"""
+        """if token respsonse is not NOTVALID means it was set"""
         for command_name in self._fields:
             if (command_response := getattr(self, command_name)) and not isinstance(command_response, Exception):
                 yield command_name, command_response
 
 
-class ImpairmentConfigCommonEnable(BaseModel):
+class ImpairmentConfigBase(BaseModel):
     enable: enums.OnOff = enums.OnOff.OFF
 
-    def load_distribution_value(self, validator: DistributionResponseValidator) -> None:
+    def set_distribution_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
         for distribution_name, distribution_response in validator.filter_valid_distribution:
             distribution_config: DistributionConfigBase = getattr(self, distribution_name)
+            distribution_config.enable(True)
             distribution_config.load_server_value(distribution_response)
 
 
@@ -97,20 +98,24 @@ class Schedule(BaseModel):
     period: int = 0
 
 
-class ImpairmentConfigCommonEnableSchedule(ImpairmentConfigCommonEnable):
-    schedule: Schedule = Schedule()
-
-
 class DistributionConfigBase(BaseModel):
+    is_enable: bool = False
+
+    def enable(self, status: bool) -> None:
+        self.is_enable = status
+
     def __iter__(self):
         return iter(self.__fields__)
 
     def load_server_value(self, distribution_token_response: Any) -> None:
         for field_name in self:
+            if field_name == 'is_enable':
+                continue
+
             if (value := getattr(distribution_token_response, field_name)):
                 setattr(self, field_name, value)
-            else:
-                raise ValueError(f'{self} {field_name} could not be None')
+            # else:
+            #     raise ValueError(f'{self} {field_name} could not be None')
 
 
 class FixedBurst(DistributionConfigBase):
@@ -161,24 +166,31 @@ class BitErrorRate(DistributionConfigBase):
     probability: int = 0
 
 
+class RandomRate(DistributionConfigBase):
+    probability: int = 0
+
+
 class ConstantDelay(DistributionConfigBase):
     delay: int = 0
 
 
-class LatencyJitterConfigMain(ImpairmentConfigCommonEnableSchedule):
+
+class ImpairmentDropConfigMain(ImpairmentConfigBase):
+    fixed_burst: FixedBurst = FixedBurst()
+    random_burst: RandomBurst = RandomBurst()
+    fixed_rate: FixedRate = FixedRate()
+    bit_error_rate: BitErrorRate = BitErrorRate()
+    random_rate: RandomRate = RandomRate()
+    gilbert_elliot: GilbertElliot = GilbertElliot()
+    uniform: Uniform = Uniform()
+    gaussian: Gaussian = Gaussian()
+    poisson: Poisson = Poisson()
+    gamma: Gamma = Gamma()
+    custom: Custom = Custom()
+
+class LatencyJitterConfigMain(ImpairmentConfigBase):
     constant_delay: ConstantDelay = ConstantDelay()
 
-
-T = TypeVar('T', bound=Union[FixedBurst, RandomBurst])
-class ImpairmentDropConfigMain(ImpairmentConfigCommonEnableSchedule):
-    distribution: Optional[DistributionConfigBase] = None
-
-
-    def select_distribution(self, distribution: T) -> T:
-        self.distribution = distribution
-        return distribution
-
-    select_fixed_burst = partialmethod(select_distribution, FixedBurst())
 
 FFF_HEX = 'FFF'
 

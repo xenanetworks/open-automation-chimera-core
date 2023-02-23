@@ -129,9 +129,9 @@ class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
 
         config = ImpairmentDropConfigMain(
             enable=enums.OnOff(enable.action),
-            schedule=Schedule(duration=schedule.duration, period=schedule.period),
         )
-        config.load_distribution_value(DistributionResponseValidator(*distributions))
+        config.set_distribution_value_from_server_response(DistributionResponseValidator(*distributions))
+        # config.set_schedule(schedule)
         return config
 
     async def set(self, config: ImpairmentDropConfigMain):

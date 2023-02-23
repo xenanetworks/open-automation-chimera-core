@@ -1,5 +1,4 @@
 import asyncio
-from pypacker.layer3 import ip
 
 
 from loguru import logger
@@ -35,7 +34,7 @@ async def main():
 
     tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False, debug=False)
     module = await tester_manager.use_module(module_id=2, reserve=False)
-    port = await tester_manager.use_port(module_id=2, port_id=0, reserve=False)
+    port = await tester_manager.use_port(module_id=2, port_id=3, reserve=False)
 
     port_config = await port.config.get()
     await port.reserve_if_not()
@@ -54,11 +53,12 @@ async def main():
 
     drop_config = await flow.drop.get()
     logger.debug(drop_config)
-    fixed_burst = drop_config.select_fixed_burst()
-    fixed_burst
-    fixed_burst.burst_size = 100
-    drop_config.schedule.duration = 2
-    drop_config.schedule.period = 5
+    return
+
+    drop_config.fixed_burst.burst_size = 1
+    drop_config.fixed_burst.enable(True)
+
+
     # await flow.drop.set(drop_config)
     # await flow.drop.enable(True)
 
