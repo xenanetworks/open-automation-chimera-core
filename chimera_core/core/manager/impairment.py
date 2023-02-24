@@ -3,6 +3,7 @@ from typing import (
     TYPE_CHECKING,
     Dict,
     Generic,
+    Iterable,
     Optional,
     Protocol,
     Tuple,
@@ -131,14 +132,13 @@ class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
             enable=enums.OnOff(enable.action),
         )
         config.set_distribution_value_from_server_response(DistributionResponseValidator(*distributions))
-        # config.set_schedule(schedule)
+        config.set_schedule(schedule)
         return config
 
-    async def set(self, config: ImpairmentDropConfigMain):
-        await asyncio.gather(*(
-            self.impairment.schedule.set(duration=config.schedule.duration, period=config.schedule.period),
-            self.impairment.distribution.fixed_burst.set(burst_size=config.fixed_burst.burst_size),
-        ))
+    async def apply(self, *command_tokens: Iterable[misc.Token]):
+        await utils.apply(
+            command_tokens
+        )
 
 
 class PInnerOuterGetDataAttr(Protocol):

@@ -53,10 +53,21 @@ async def main():
 
     drop_config = await flow.drop.get()
     logger.debug(drop_config)
-    return
 
-    drop_config.fixed_burst.burst_size = 1
-    drop_config.fixed_burst.enable(True)
+    distribution = drop_config.distribution.get_current_distribution()
+
+
+    await drop_config.apply() # send config
+
+
+    # drop_config.fixed_burst.burst_size = 1
+    # drop_config.fixed_burst.enable(True)
+    # drop_config.fixed_rate.enable(True)
+
+    # drop_config.fixed_burst.schedule.one_shot()
+    # drop_config.fixed_burst.schedule
+
+    # drop_config.select_fixed()
 
 
     # await flow.drop.set(drop_config)

@@ -83,8 +83,27 @@ class DistributionResponseValidator(NamedTuple):
                 yield command_name, command_response
 
 
+
+
+class Schedule(BaseModel):
+    duration: int = 0
+    period: int = 0
+
+    def one_shot(self) -> None:
+        self.duration = 1
+        self.period = 0
+
+    def repeat(self, period: int) -> None:
+        self.duration = 1
+        self.period = period
+
+    def continuous(self) -> None:
+        self.duration = 1
+        self.period = 0
+
 class ImpairmentConfigBase(BaseModel):
     enable: enums.OnOff = enums.OnOff.OFF
+    schedule: Schedule = Schedule()
 
     def set_distribution_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
         for distribution_name, distribution_response in validator.filter_valid_distribution:
@@ -92,10 +111,8 @@ class ImpairmentConfigBase(BaseModel):
             distribution_config.enable(True)
             distribution_config.load_server_value(distribution_response)
 
-
-class Schedule(BaseModel):
-    duration: int = 1
-    period: int = 0
+    def set_schedule(self, token_response: Any):
+        pass
 
 
 class DistributionConfigBase(BaseModel):
@@ -120,7 +137,10 @@ class DistributionConfigBase(BaseModel):
 
 class FixedBurst(DistributionConfigBase):
     burst_size: int = 0
+    schedule = Schedule()
 
+    def apply(self):
+        yield
 
 class RandomBurst(DistributionConfigBase):
     minimum: int = 0
@@ -174,19 +194,37 @@ class ConstantDelay(DistributionConfigBase):
     delay: int = 0
 
 
+UnionDistibutions = Union[FixedBurst, FixedRate]
 
+class DistributionManager(BaseModel):
+    __current: Optional[UnionDistibutions] = None
+
+    # fixed_burst: FixedBurst = FixedBurst()
+    # random_burst: RandomBurst = RandomBurst()
+    # fixed_rate: FixedRate = FixedRate()
+    # bit_error_rate: BitErrorRate = BitErrorRate()
+    # random_rate: RandomRate = RandomRate()
+    # gilbert_elliot: GilbertElliot = GilbertElliot()
+    # uniform: Uniform = Uniform()
+    # gaussian: Gaussian = Gaussian()
+    # poisson: Poisson = Poisson()
+    # gamma: Gamma = Gamma()
+    # custom: Custom = Custom()
+    def get_current_distribution(self) -> Optional["DistributionConfigBase"]:
+        return self.__current
+
+    def set_distribution(self, distribution: "DistributionConfigBase") -> None:
+        self.__current = distribution
+
+    class Config:
+        allow_muation = True
+
+
+T = TypeVar('T', bound="DistributionConfigBase", covariant=True)
 class ImpairmentDropConfigMain(ImpairmentConfigBase):
-    fixed_burst: FixedBurst = FixedBurst()
-    random_burst: RandomBurst = RandomBurst()
-    fixed_rate: FixedRate = FixedRate()
-    bit_error_rate: BitErrorRate = BitErrorRate()
-    random_rate: RandomRate = RandomRate()
-    gilbert_elliot: GilbertElliot = GilbertElliot()
-    uniform: Uniform = Uniform()
-    gaussian: Gaussian = Gaussian()
-    poisson: Poisson = Poisson()
-    gamma: Gamma = Gamma()
-    custom: Custom = Custom()
+    distribution: DistributionManager = DistributionManager()
+
+
 
 class LatencyJitterConfigMain(ImpairmentConfigBase):
     constant_delay: ConstantDelay = ConstantDelay()
