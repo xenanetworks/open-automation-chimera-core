@@ -1,9 +1,12 @@
 import asyncio
+import itertools
 from typing import (
     TYPE_CHECKING,
     Dict,
+    Generator,
     Generic,
     Iterable,
+    List,
     Optional,
     Protocol,
     Tuple,
@@ -23,8 +26,11 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 
 from .dataset import (
     TPLD_FILTERS_LENGTH,
+    ImpairmentConfigBase,
+    ImpairmentConfigPolicer,
     ImpairmentDropConfigMain,
     DistributionResponseValidator,
+    ImpairmentWithDistribution,
     InnerOuter,
     LatencyJitterConfigMain,
     ProtocolSegement,
@@ -53,23 +59,20 @@ from .dataset import (
     ShadowFilterLayerXena,
 )
 
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
+    CLatencyJitterImpairment,
+    CDropImpairment,
+    CPolicerImpairment,
+)
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 
 
-T = TypeVar('T', CLatencyJitterImpairment, CDropImpairment)
+T = TypeVar('T', CLatencyJitterImpairment, CDropImpairment, CPolicerImpairment)
 
 
 class ImpairmentConfiguratorBase(Generic[T]):
     def __init__(self, impairment: T):
         self.impairment = impairment
-
-    async def _get_enable_and_schedule(self) -> Tuple[commands.PED_ENABLE.GetDataAttr, commands.PED_SCHEDULE.GetDataAttr]:
-        enable, schedule = await asyncio.gather(*(
-            self.impairment.enable.get(),
-            self.impairment.schedule.get(),
-        ))
-        return enable, schedule
 
     async def enable(self, state: bool) -> None:
         await self.impairment.enable.set(enums.OnOff(state))
@@ -107,11 +110,16 @@ class LatencyJitterConfigurator(ImpairmentConfiguratorBase[CLatencyJitterImpairm
         ))
 
 
+class PDistributionApply(Protocol):
+    def apply(self, impairment: Any) -> Generator[misc.Token, None, None]:
+        ...
+
+
 class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
     def __init__(self, impairment: "CDropImpairment"):
         self.impairment = impairment
 
-    async def get(self) -> ImpairmentDropConfigMain:
+    async def get(self) -> ImpairmentWithDistribution:
         enable, schedule, *distributions = await asyncio.gather(*(
             self.impairment.enable.get(),
             self.impairment.schedule.get(),
@@ -128,17 +136,31 @@ class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
             self.impairment.distribution.custom.get(),
         ), return_exceptions=True)
 
-        config = ImpairmentDropConfigMain(
+        config = ImpairmentWithDistribution(
             enable=enums.OnOff(enable.action),
         )
-        config.set_distribution_value_from_server_response(DistributionResponseValidator(*distributions))
-        config.set_schedule(schedule)
+        config.distribution.load_value_from_server_response(DistributionResponseValidator(*distributions))
+        config.distribution.set_schedule(schedule)
         return config
 
-    async def apply(self, *command_tokens: Iterable[misc.Token]):
-        await utils.apply(
-            command_tokens
+    async def apply(self, *configs: PDistributionApply) -> None:
+        await utils.apply(*iter(*itertools.chain(c.apply(self.impairment) for c in configs)))
+
+
+class ImpairmentPolicer(ImpairmentConfiguratorBase[CPolicerImpairment]):
+    def __init__(self, impairment: "CPolicerImpairment"):
+        self.impairment = impairment
+
+    async def get(self) -> ImpairmentConfigPolicer:
+        config = await self.impairment.config.get()
+
+        config = ImpairmentConfigPolicer(
+            on_off=enums.OnOff(config.on_off),
+            mode=enums.PolicerMode(config.mode),
+            cir=config.cir,
+            cbs=config.cbs,
         )
+        return config
 
 
 class PInnerOuterGetDataAttr(Protocol):

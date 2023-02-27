@@ -1,7 +1,12 @@
 from dataclasses import dataclass
 from typing import List, TYPE_CHECKING
 
-from chimera_core.core.manager.impairment import LatencyJitterConfigurator, ImpairmentDrop, ShadowFilterManager
+from chimera_core.core.manager.impairment import (
+    LatencyJitterConfigurator,
+    ShadowFilterManager,
+    ImpairmentDrop,
+    ImpairmentPolicer,
+)
 
 if TYPE_CHECKING:
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CFlow
@@ -13,6 +18,7 @@ class FlowManager:
         self.shadow_filter = ShadowFilterManager(flow.shadow_filter)
         self.latency_jitter = LatencyJitterConfigurator(flow.latency_jitter)
         self.drop = ImpairmentDrop(flow.drop)
+        self.policer = ImpairmentPolicer(flow.policer)
 
 
 @dataclass

@@ -1,13 +1,13 @@
 import ipaddress
+from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Coroutine, Dict, Generator, Generic, List, NamedTuple, Optional, Protocol, Tuple, Type, TypeVar, Union, cast
 from enum import Enum
 from functools import partial, partialmethod
 from loguru import logger
 
 from pydantic import BaseModel
-from pydantic.fields import Field
 from xoa_driver import enums
-
+from xoa_driver.v2 import misc
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CLatencyJitterImpairment, CDropImpairment
 
 
@@ -59,33 +59,24 @@ class ModuleConfig(BaseModel):
 TypeExceptionAny = Union[Exception, Any, None]
 
 
-class DistributionResponseValidator(NamedTuple):
-    """If get command return NOTVALID, the config was not being set"""
-    fixed_burst: TypeExceptionAny = None
-    random: TypeExceptionAny = None
-    fixed: TypeExceptionAny = None
-    bit_error_rate: TypeExceptionAny = None
-    ge: TypeExceptionAny = None
-    uniform: TypeExceptionAny = None
-    gaussian: TypeExceptionAny = None
-    gamma: TypeExceptionAny = None
-    poison: TypeExceptionAny = None
-    custom: TypeExceptionAny = None
-    accumulate_and_burst: TypeExceptionAny = None
-    constant_delay: TypeExceptionAny = None
-    step: TypeExceptionAny = None
+@dataclass
+class DistributionConfigBase:
+    def __iter__(self):
+        return iter(fields(self))
 
-    @property
-    def filter_valid_distribution(self) -> Generator[Tuple[str, Any], None, None]:
-        """if token respsonse is not NOTVALID means it was set"""
-        for command_name in self._fields:
-            if (command_response := getattr(self, command_name)) and not isinstance(command_response, Exception):
-                yield command_name, command_response
+    def load_server_value(self, distribution_token_response: Any) -> None:
+        for field in self:
+            if (value := getattr(distribution_token_response, field.name)):
+                setattr(self, field.name, value)
+            # else:
+            #     raise ValueError(f'{self} {field_name} could not be None')
+
+    def apply(self, impairment: Any) -> Generator[misc.Token, None, None]:
+        raise NotImplementedError
 
 
-
-
-class Schedule(BaseModel):
+@dataclass
+class Schedule:
     duration: int = 0
     period: int = 0
 
@@ -101,46 +92,14 @@ class Schedule(BaseModel):
         self.duration = 1
         self.period = 0
 
-class ImpairmentConfigBase(BaseModel):
-    enable: enums.OnOff = enums.OnOff.OFF
-    schedule: Schedule = Schedule()
 
-    def set_distribution_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
-        for distribution_name, distribution_response in validator.filter_valid_distribution:
-            distribution_config: DistributionConfigBase = getattr(self, distribution_name)
-            distribution_config.enable(True)
-            distribution_config.load_server_value(distribution_response)
-
-    def set_schedule(self, token_response: Any):
-        pass
-
-
-class DistributionConfigBase(BaseModel):
-    is_enable: bool = False
-
-    def enable(self, status: bool) -> None:
-        self.is_enable = status
-
-    def __iter__(self):
-        return iter(self.__fields__)
-
-    def load_server_value(self, distribution_token_response: Any) -> None:
-        for field_name in self:
-            if field_name == 'is_enable':
-                continue
-
-            if (value := getattr(distribution_token_response, field_name)):
-                setattr(self, field_name, value)
-            # else:
-            #     raise ValueError(f'{self} {field_name} could not be None')
-
-
-class FixedBurst(DistributionConfigBase):
-    burst_size: int = 0
+class ScheduleMixin:
     schedule = Schedule()
 
-    def apply(self):
-        yield
+
+class FixedBurst(DistributionConfigBase, ScheduleMixin):
+    burst_size: int = 0
+
 
 class RandomBurst(DistributionConfigBase):
     minimum: int = 0
@@ -193,37 +152,91 @@ class RandomRate(DistributionConfigBase):
 class ConstantDelay(DistributionConfigBase):
     delay: int = 0
 
+class DistributionResponseValidator(NamedTuple):
+    """If get command return NOTVALID, the config was not being set"""
+    fixed_burst: TypeExceptionAny = None
+    random: TypeExceptionAny = None
+    fixed: TypeExceptionAny = None
+    bit_error_rate: TypeExceptionAny = None
+    ge: TypeExceptionAny = None
+    uniform: TypeExceptionAny = None
+    gaussian: TypeExceptionAny = None
+    gamma: TypeExceptionAny = None
+    poison: TypeExceptionAny = None
+    custom: TypeExceptionAny = None
+    accumulate_and_burst: TypeExceptionAny = None
+    constant_delay: TypeExceptionAny = None
+    step: TypeExceptionAny = None
 
-UnionDistibutions = Union[FixedBurst, FixedRate]
+    @property
+    def filter_valid_distribution(self) -> Generator[Tuple[str, Any], None, None]:
+        """if token respsonse is not NOTVALID means it was set"""
+        for command_name in self._fields:
+            if (command_response := getattr(self, command_name)) and not isinstance(command_response, Exception):
+                yield command_name, command_response
 
-class DistributionManager(BaseModel):
-    __current: Optional[UnionDistibutions] = None
 
-    # fixed_burst: FixedBurst = FixedBurst()
-    # random_burst: RandomBurst = RandomBurst()
-    # fixed_rate: FixedRate = FixedRate()
-    # bit_error_rate: BitErrorRate = BitErrorRate()
-    # random_rate: RandomRate = RandomRate()
-    # gilbert_elliot: GilbertElliot = GilbertElliot()
-    # uniform: Uniform = Uniform()
-    # gaussian: Gaussian = Gaussian()
-    # poisson: Poisson = Poisson()
-    # gamma: Gamma = Gamma()
-    # custom: Custom = Custom()
+distribution_class: Dict[str, Type[DistributionConfigBase]] = {
+    'fixed_burst': FixedBurst,
+    'random_burst': RandomBurst,
+    'fixed_rate': FixedRate,
+    'bit_error_rate': BitErrorRate,
+    'random_rate': RandomRate,
+    'gilbert_elliot': GilbertElliot,
+    'uniform': Uniform,
+    'gaussian': Gaussian,
+    'poisson': Poisson,
+    'gamma': Gamma,
+    'custom': Custom,
+}
+
+
+@dataclass
+class DistributionManager:
+    _current: Optional[DistributionConfigBase] = None
+
     def get_current_distribution(self) -> Optional["DistributionConfigBase"]:
-        return self.__current
+        return self._current
 
     def set_distribution(self, distribution: "DistributionConfigBase") -> None:
-        self.__current = distribution
+        self._current = distribution
 
-    class Config:
-        allow_muation = True
+    def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
+        logger.debug(validator)
+        for distribution_name, distribution_response in validator.filter_valid_distribution:
+            distribution_config = distribution_class[distribution_name]()
+            distribution_config.load_server_value(distribution_response)
+            self.set_distribution(distribution_config)
+
+    def set_schedule(self, schedule_respsonse: Any) -> None:
+        if (distribution := self.get_current_distribution()) \
+            and isinstance(distribution, ScheduleMixin) \
+                and not isinstance(schedule_respsonse, Exception):
+            distribution.schedule.duration = schedule_respsonse.duration
+            distribution.schedule.period = schedule_respsonse.period
 
 
-T = TypeVar('T', bound="DistributionConfigBase", covariant=True)
-class ImpairmentDropConfigMain(ImpairmentConfigBase):
-    distribution: DistributionManager = DistributionManager()
+@dataclass
+class ImpairmentConfigBase:
+    enable: enums.OnOff = enums.OnOff.OFF
 
+    # def tokens_of_get(self, impairment: Any) -> Generator[misc.Token, None, None]:
+
+
+class ImpairmentWithDistribution(ImpairmentConfigBase):
+    distribution: DistributionManager = field(default_factory=DistributionManager)
+
+
+class ImpairmentDropConfigMain(ImpairmentWithDistribution):
+    pass
+
+
+@dataclass
+class ImpairmentConfigPolicer:
+    on_off: enums.OnOff = enums.OnOff.OFF
+    mode: enums.PolicerMode = enums.PolicerMode.L2
+    cir: int = 0
+    cbs: int = 0
 
 
 class LatencyJitterConfigMain(ImpairmentConfigBase):
@@ -411,8 +424,9 @@ class ShadowFilterLayer4(BaseModel):
         return self.udp
 
 
-class ShadowFilterConfigTPLDID(BaseModel):
-    filter_index: int = Field(read_only=True)
+@dataclass
+class ShadowFilterConfigTPLDID:
+    filter_index: int
     tpld_id: int = 0
     use: enums.OnOff = enums.OnOff.OFF
 
