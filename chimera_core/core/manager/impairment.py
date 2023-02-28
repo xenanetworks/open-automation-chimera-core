@@ -60,14 +60,27 @@ from .dataset import (
 )
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
-    CLatencyJitterImpairment,
     CDropImpairment,
+    CMisorderingImpairment,
+    CLatencyJitterImpairment,
     CPolicerImpairment,
 )
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 
 
-T = TypeVar('T', CLatencyJitterImpairment, CDropImpairment, CPolicerImpairment)
+class PDistributionApply(Protocol):
+    def apply(self, impairment: Any) -> Generator[misc.Token, None, None]:
+        ...
+
+
+T = TypeVar(
+    'T',
+    CLatencyJitterImpairment,
+    CDropImpairment,
+    CMisorderingImpairment,
+    CLatencyJitterImpairment,
+    CPolicerImpairment,
+)
 
 
 class ImpairmentConfiguratorBase(Generic[T]):
@@ -77,53 +90,22 @@ class ImpairmentConfiguratorBase(Generic[T]):
     async def enable(self, state: bool) -> None:
         await self.impairment.enable.set(enums.OnOff(state))
 
-
-class LatencyJitterConfigurator(ImpairmentConfiguratorBase[CLatencyJitterImpairment]):
-    async def get(self) -> LatencyJitterConfigMain:
-        enable, schedule = await self._get_enable_and_schedule()
-
-        # distributions = await asyncio.gather(*(
-        #     self.impairment.distribution.constant_delay.get(),
-        #     self.impairment.distribution.accumulate_and_burst.get(),
-        #     self.impairment.distribution.step.get(),
-        #     self.impairment.distribution.uniform.get(),
-        #     self.impairment.distribution.gaussian.get(),
-        #     self.impairment.distribution.poison.get(),
-        #     self.impairment.distribution.gamma.get(),
-        #     self.impairment.distribution.custom.get(),
-        # ), return_exceptions=True)
-
-        config = LatencyJitterConfigMain(
-            enable=enums.OnOff(enable.action),
-            schedule=Schedule(duration=schedule.duration, period=schedule.period),
-        )
-        commands = config.get_distribution_commands(self.impairment)
-        logger.debug(commands)
-        responses = dict(zip(commands.keys(), await asyncio.gather(*commands.values(), return_exceptions=True)))
-        config.validate_response_and_load_value(responses)
-        return config
-
-    async def set(self, config: LatencyJitterConfigMain) -> None:
-        await asyncio.gather(*(
-            self.impairment.schedule.set(duration=config.schedule.duration, period=config.schedule.period),
-            self.impairment.distribution.constant_delay.set(config.constant_delay.delay)
+    async def _get_enable_and_schedule(self) -> Tuple[commands.PED_ENABLE.GetDataAttr, commands.PED_SCHEDULE.GetDataAttr]:
+        assert not isinstance(self.impairment, CPolicerImpairment)
+        enable, schedule = await asyncio.gather(*(
+            self.impairment.enable.get(),
+            self.impairment.schedule.get(),
         ))
+        return enable, schedule
 
-
-class PDistributionApply(Protocol):
-    def apply(self, impairment: Any) -> Generator[misc.Token, None, None]:
-        ...
+    async def apply(self, *configs: PDistributionApply) -> None:
+        await utils.apply(*iter(*itertools.chain(c.apply(self.impairment) for c in configs)))
 
 
 class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
-    def __init__(self, impairment: "CDropImpairment"):
-        self.impairment = impairment
-
     async def get(self) -> ImpairmentWithDistribution:
-        enable, schedule, *distributions = await asyncio.gather(*(
-            self.impairment.enable.get(),
-            self.impairment.schedule.get(),
-
+        enable, schedule = await self._get_enable_and_schedule()
+        distributions = await asyncio.gather(*(
             self.impairment.distribution.fixed_burst.get(),
             self.impairment.distribution.random.get(),
             self.impairment.distribution.fixed.get(),
@@ -136,15 +118,57 @@ class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
             self.impairment.distribution.custom.get(),
         ), return_exceptions=True)
 
-        config = ImpairmentWithDistribution(
-            enable=enums.OnOff(enable.action),
-        )
+        config = ImpairmentWithDistribution(enable=enums.OnOff(enable.action))
         config.distribution.load_value_from_server_response(DistributionResponseValidator(*distributions))
         config.distribution.set_schedule(schedule)
         return config
 
-    async def apply(self, *configs: PDistributionApply) -> None:
-        await utils.apply(*iter(*itertools.chain(c.apply(self.impairment) for c in configs)))
+
+class ImpairmentMisordering(ImpairmentConfiguratorBase[CMisorderingImpairment]):
+    async def get(self) -> ImpairmentWithDistribution:
+        enable, schedule = await self._get_enable_and_schedule()
+        fixed_burst, fixed = await asyncio.gather(*(
+            self.impairment.distribution.fixed_burst.get(),
+            self.impairment.distribution.fixed.get(),
+        ), return_exceptions=True)
+
+        config = ImpairmentWithDistribution(enable=enums.OnOff(enable.action))
+        config.distribution.load_value_from_server_response(DistributionResponseValidator(
+            fixed_burst=fixed_burst,
+            fixed=fixed,
+        ))
+        config.distribution.set_schedule(schedule)
+        return config
+
+
+class ImpairmentLatencyJitter(ImpairmentConfiguratorBase[CLatencyJitterImpairment]):
+    def put_token_response_into_config(self, enable, schedule, validator: DistributionResponseValidator) -> ImpairmentWithDistribution:
+        config = ImpairmentWithDistribution(enable=enums.OnOff(enable.action))
+        config.distribution.load_value_from_server_response(validator)
+        config.distribution.set_schedule(schedule)
+        return config
+
+    async def get(self) -> ImpairmentWithDistribution:
+        enable, schedule = await self._get_enable_and_schedule()
+        distributions = await asyncio.gather(*(
+            self.impairment.distribution.constant_delay.get(),
+            self.impairment.distribution.accumulate_and_burst.get(),
+            self.impairment.distribution.step.get(),
+            self.impairment.distribution.uniform.get(),
+            self.impairment.distribution.gaussian.get(),
+            self.impairment.distribution.poison.get(),
+            self.impairment.distribution.gamma.get(),
+            self.impairment.distribution.custom.get(),
+        ), return_exceptions=True)
+
+        return self.put_token_response_into_config(enable=enable, schedule=schedule, validator=DistributionResponseValidator(*distributions))
+
+    async def set(self, config: LatencyJitterConfigMain) -> None:
+        await asyncio.gather(*(
+            self.impairment.schedule.set(duration=config.schedule.duration, period=config.schedule.period),
+            self.impairment.distribution.constant_delay.set(config.constant_delay.delay)
+        ))
+
 
 
 class ImpairmentPolicer(ImpairmentConfiguratorBase[CPolicerImpairment]):

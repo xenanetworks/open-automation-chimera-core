@@ -75,82 +75,111 @@ class DistributionConfigBase:
         raise NotImplementedError
 
 
+TImpairment = Union[CDropImpairment, CLatencyJitterImpairment]
+
+
 @dataclass
 class Schedule:
     duration: int = 0
     period: int = 0
 
+    def apply(self, impairment: TImpairment) -> Generator[misc.Token, None, None]:
+        yield impairment.schedule.set(duration=self.duration, period=self.period)
+
+
+class DistributionWithBurstSchedule(DistributionConfigBase):
+    schedule: Schedule = Schedule()
+
     def one_shot(self) -> None:
-        self.duration = 1
-        self.period = 0
+        self.schedule.duration = 1
+        self.schedule.period = 0
 
     def repeat(self, period: int) -> None:
-        self.duration = 1
-        self.period = period
+        self.schedule.duration = 1
+        self.schedule.period = period
+
+
+class DistributionWithNonBurstSchedule(DistributionConfigBase):
+    schedule: Schedule = Schedule()
 
     def continuous(self) -> None:
         self.duration = 1
         self.period = 0
 
+    def repeat_pattern(self, duration: int, period: int) -> None:
+        self.duration = duration
+        self.period = period
 
-class ScheduleMixin:
-    schedule = Schedule()
 
-
-class FixedBurst(DistributionConfigBase, ScheduleMixin):
+class FixedBurst(DistributionWithBurstSchedule):
     burst_size: int = 0
 
+    def apply(self, impairment: TImpairment) -> Generator[misc.Token, None, None]:
+        yield impairment.distribution.fixed_burst.set(burst_size=self.burst_size)
+        yield from self.schedule.apply(impairment)
 
-class RandomBurst(DistributionConfigBase):
+
+@dataclass
+class RandomBurst(DistributionWithNonBurstSchedule):
     minimum: int = 0
     maximum: int = 0
     probability: int = 0
 
 
-class FixedRate(DistributionConfigBase):
+@dataclass
+class FixedRate(DistributionWithNonBurstSchedule):
     probability: int = 0
 
 
-class GilbertElliot(DistributionConfigBase):
+@dataclass
+class GilbertElliot(DistributionWithNonBurstSchedule):
     good_state_prob: int = 0
     good_state_trans_prob: int = 0
     bad_prob: int = 0
     bad_state_trans_prob: int = 0
 
 
-class Uniform(DistributionConfigBase):
+@dataclass
+class Uniform(DistributionWithNonBurstSchedule):
     minimum: int = 0
     maximum: int = 0
 
-
-class Gaussian(DistributionConfigBase):
+@dataclass
+class Gaussian(DistributionWithNonBurstSchedule):
     mean: int = 0
     std_deviation: int = 0
 
 
-class Gamma(DistributionConfigBase):
+@dataclass
+class Gamma(DistributionWithNonBurstSchedule):
     shape: int = 0
     scale: int = 0
 
 
-class Poisson(DistributionConfigBase):
+@dataclass
+class Poisson(DistributionWithNonBurstSchedule):
     mean: int = 0
 
 
-class Custom(DistributionConfigBase):
+@dataclass
+class Custom(DistributionWithNonBurstSchedule):
     cust_id: int = 0
 
 
-class BitErrorRate(DistributionConfigBase):
+@dataclass
+class BitErrorRate(DistributionWithNonBurstSchedule):
     probability: int = 0
 
 
-class RandomRate(DistributionConfigBase):
+@dataclass
+class RandomRate(DistributionWithNonBurstSchedule):
     probability: int = 0
 
 
+@dataclass
 class ConstantDelay(DistributionConfigBase):
     delay: int = 0
+
 
 class DistributionResponseValidator(NamedTuple):
     """If get command return NOTVALID, the config was not being set"""
@@ -210,7 +239,7 @@ class DistributionManager:
 
     def set_schedule(self, schedule_respsonse: Any) -> None:
         if (distribution := self.get_current_distribution()) \
-            and isinstance(distribution, ScheduleMixin) \
+            and isinstance(distribution, DistributionWithNonBurstSchedule) \
                 and not isinstance(schedule_respsonse, Exception):
             distribution.schedule.duration = schedule_respsonse.duration
             distribution.schedule.period = schedule_respsonse.period
@@ -223,6 +252,7 @@ class ImpairmentConfigBase:
     # def tokens_of_get(self, impairment: Any) -> Generator[misc.Token, None, None]:
 
 
+@dataclass
 class ImpairmentWithDistribution(ImpairmentConfigBase):
     distribution: DistributionManager = field(default_factory=DistributionManager)
 

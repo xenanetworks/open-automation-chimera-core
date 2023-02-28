@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from typing import List, TYPE_CHECKING
 
 from chimera_core.core.manager.impairment import (
-    LatencyJitterConfigurator,
+    ImpairmentMisordering,
+    ImpairmentLatencyJitter,
     ShadowFilterManager,
     ImpairmentDrop,
     ImpairmentPolicer,
@@ -16,8 +17,11 @@ class FlowManager:
     def __init__(self, flow: "CFlow"):
         self.flow = flow
         self.shadow_filter = ShadowFilterManager(flow.shadow_filter)
-        self.latency_jitter = LatencyJitterConfigurator(flow.latency_jitter)
         self.drop = ImpairmentDrop(flow.drop)
+        self.misordering = ImpairmentMisordering(flow.misordering)
+
+
+        self.latency_jitter = ImpairmentLatencyJitter(flow.latency_jitter)
         self.policer = ImpairmentPolicer(flow.policer)
 
 
