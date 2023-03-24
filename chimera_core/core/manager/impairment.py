@@ -26,9 +26,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 
 from .dataset import (
     TPLD_FILTERS_LENGTH,
-    ImpairmentConfigBase,
     ImpairmentConfigPolicer,
-    ImpairmentDropConfigMain,
     DistributionResponseValidator,
     ImpairmentWithDistribution,
     InnerOuter,
@@ -87,7 +85,7 @@ class ImpairmentConfiguratorBase(Generic[T]):
     def __init__(self, impairment: T):
         self.impairment = impairment
 
-    async def enable(self, state: bool) -> None:
+    async def start(self, state: bool) -> None:
         await self.impairment.enable.set(enums.OnOff(state))
 
     async def _get_enable_and_schedule(self) -> Tuple[commands.PED_ENABLE.GetDataAttr, commands.PED_SCHEDULE.GetDataAttr]:
@@ -123,6 +121,9 @@ class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
         config.distribution.set_schedule(schedule)
         return config
 
+    async def set(self, config: ImpairmentWithDistribution) -> None:
+        await asyncio.gather(*config.apply(self.impairment))
+
 
 class ImpairmentMisordering(ImpairmentConfiguratorBase[CMisorderingImpairment]):
     async def get(self) -> ImpairmentWithDistribution:
@@ -135,7 +136,7 @@ class ImpairmentMisordering(ImpairmentConfiguratorBase[CMisorderingImpairment]):
         config = ImpairmentWithDistribution(enable=enums.OnOff(enable.action))
         config.distribution.load_value_from_server_response(DistributionResponseValidator(
             fixed_burst=fixed_burst,
-            fixed=fixed,
+            fixed_rate=fixed,
         ))
         config.distribution.set_schedule(schedule)
         return config

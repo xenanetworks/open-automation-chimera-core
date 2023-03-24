@@ -34,7 +34,7 @@ async def main():
 
     tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False, debug=False)
     module = await tester_manager.use_module(module_id=2, reserve=False)
-    port = await tester_manager.use_port(module_id=2, port_id=0, reserve=False)
+    port = await tester_manager.use_port(module_id=2, port_id=3, reserve=False)
 
     port_config = await port.config.get()
     await port.reserve_if_not()
@@ -53,34 +53,18 @@ async def main():
 
     drop_config = await flow.drop.get()
     logger.debug(drop_config)
-    policer_config = await flow.policer.get()
-    logger.debug(policer_config)
-
-
-    return
-    drop_config.distribution.get_current_distribution()
 
     fixed_burst = FixedBurst()
+    fixed_burst.repeat(period=2)
+    # await flow.drop.apply(fixed_burst) # send config
     drop_config.distribution.set_distribution(fixed_burst)
-    distribution = drop_config.distribution.get_current_distribution()
-    await flow.drop.apply(fixed_burst) # send config
+    # distribution = drop_config.distribution.get_current_distribution()
+    # assert distribution is fixed_burst
+    await flow.drop.set(drop_config)
+    await flow.drop.start(True)
 
-
-    # drop_config.fixed_burst.burst_size = 1
-    # drop_config.fixed_burst.enable(True)
-    # drop_config.fixed_rate.enable(True)
-
-    # drop_config.fixed_burst.schedule.one_shot()
-    # drop_config.fixed_burst.schedule
-
-    # drop_config.select_fixed()
-
-
-    # await flow.drop.set(drop_config)
-    # await flow.drop.enable(True)
-
-    # latency_jtter_config = await flow.latency_jitter.get()
-    # logger.debug(latency_jtter_config)
+    latency_jtter_config = await flow.latency_jitter.get()
+    logger.debug(latency_jtter_config)
     # latency_jtter_config.constant_delay.delay = 1000000
     # latency_jtter_config.schedule.duration = 2
     # latency_jtter_config.schedule.period = 0
@@ -88,6 +72,8 @@ async def main():
     # await flow.latency_jitter.enable(True)
 
 
+    policer_config = await flow.policer.get()
+    logger.debug(policer_config)
 
 if __name__ == '__main__':
     loop = asyncio.new_event_loop()

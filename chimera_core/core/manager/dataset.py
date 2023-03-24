@@ -14,6 +14,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CL
 INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
 TPLD_FILTERS_LENGTH = 16
 
+GenratorToken = Generator[misc.Token, None, None]
 
 class PortConfigPcsPmaBase(BaseModel):
     enable: enums.OnOff = enums.OnOff.OFF
@@ -59,6 +60,8 @@ class ModuleConfig(BaseModel):
 TypeExceptionAny = Union[Exception, Any, None]
 
 
+TImpairment = Union[CDropImpairment, CLatencyJitterImpairment]
+
 @dataclass
 class DistributionConfigBase:
     def __iter__(self):
@@ -71,11 +74,10 @@ class DistributionConfigBase:
             # else:
             #     raise ValueError(f'{self} {field_name} could not be None')
 
-    def apply(self, impairment: Any) -> Generator[misc.Token, None, None]:
+    def apply(self, impairment: TImpairment) -> GenratorToken:
         raise NotImplementedError
 
 
-TImpairment = Union[CDropImpairment, CLatencyJitterImpairment]
 
 
 @dataclass
@@ -83,7 +85,7 @@ class Schedule:
     duration: int = 0
     period: int = 0
 
-    def apply(self, impairment: TImpairment) -> Generator[misc.Token, None, None]:
+    def apply(self, impairment: TImpairment) -> GenratorToken:
         yield impairment.schedule.set(duration=self.duration, period=self.period)
 
 
@@ -98,6 +100,9 @@ class DistributionWithBurstSchedule(DistributionConfigBase):
         self.schedule.duration = 1
         self.schedule.period = period
 
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield from self.schedule.apply(impairment)
+
 
 class DistributionWithNonBurstSchedule(DistributionConfigBase):
     schedule: Schedule = Schedule()
@@ -110,13 +115,16 @@ class DistributionWithNonBurstSchedule(DistributionConfigBase):
         self.duration = duration
         self.period = period
 
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield from self.schedule.apply(impairment)
+
 
 class FixedBurst(DistributionWithBurstSchedule):
     burst_size: int = 0
 
-    def apply(self, impairment: TImpairment) -> Generator[misc.Token, None, None]:
+    def apply(self, impairment: TImpairment) -> GenratorToken:
         yield impairment.distribution.fixed_burst.set(burst_size=self.burst_size)
-        yield from self.schedule.apply(impairment)
+        yield from super().apply(impairment)
 
 
 @dataclass
@@ -125,18 +133,39 @@ class RandomBurst(DistributionWithNonBurstSchedule):
     maximum: int = 0
     probability: int = 0
 
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.random.set(
+            minimum=self.minimum,
+            maximum=self.maximum,
+            probability=self.probability,
+            )
+        yield from super().apply(impairment)
+
 
 @dataclass
 class FixedRate(DistributionWithNonBurstSchedule):
     probability: int = 0
+
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.fixed.set(probability=self.probability)
+        yield from super().apply(impairment)
 
 
 @dataclass
 class GilbertElliot(DistributionWithNonBurstSchedule):
     good_state_prob: int = 0
     good_state_trans_prob: int = 0
-    bad_prob: int = 0
+    bad_state_prob: int = 0
     bad_state_trans_prob: int = 0
+
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.ge.set(
+           good_state_prob=self.good_state_prob,
+            good_state_trans_prob=self.good_state_trans_prob,
+            bad_state_prob=self.bad_state_prob,
+            bad_state_trans_prob=self.bad_state_trans_prob,
+        )
+        yield from super().apply(impairment)
 
 
 @dataclass
@@ -144,10 +173,25 @@ class Uniform(DistributionWithNonBurstSchedule):
     minimum: int = 0
     maximum: int = 0
 
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.uniform.set(
+            minimum=self.minimum,
+            maximum=self.maximum,
+        )
+        yield from super().apply(impairment)
+
+
 @dataclass
 class Gaussian(DistributionWithNonBurstSchedule):
     mean: int = 0
     std_deviation: int = 0
+
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.gaussian.set(
+            mean=self.mean,
+            std_deviation=self.std_deviation,
+        )
+        yield from super().apply(impairment)
 
 
 @dataclass
@@ -155,37 +199,65 @@ class Gamma(DistributionWithNonBurstSchedule):
     shape: int = 0
     scale: int = 0
 
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.gamma.set(
+            shape=self.shape,
+            scale=self.scale,
+        )
+        yield from super().apply(impairment)
+
 
 @dataclass
 class Poisson(DistributionWithNonBurstSchedule):
     mean: int = 0
+
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.poison.set(mean=self.mean)
+        yield from super().apply(impairment)
 
 
 @dataclass
 class Custom(DistributionWithNonBurstSchedule):
     cust_id: int = 0
 
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.custom.set(cust_id=self.cust_id)
+        yield from super().apply(impairment)
+
 
 @dataclass
 class BitErrorRate(DistributionWithNonBurstSchedule):
-    probability: int = 0
+    coef: int = 0
+    exp: int = 0
+
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.bit_error_rate.set(coef=self.coef, exp=self.exp)
+        yield from super().apply(impairment)
 
 
 @dataclass
 class RandomRate(DistributionWithNonBurstSchedule):
     probability: int = 0
 
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.random.set(probability=self.probability)
+        yield from super().apply(impairment)
+
 
 @dataclass
 class ConstantDelay(DistributionConfigBase):
     delay: int = 0
+
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield impairment.distribution.constant_delay.set(delay=self.delay)
+        yield from super().apply(impairment)
 
 
 class DistributionResponseValidator(NamedTuple):
     """If get command return NOTVALID, the config was not being set"""
     fixed_burst: TypeExceptionAny = None
     random: TypeExceptionAny = None
-    fixed: TypeExceptionAny = None
+    fixed_rate: TypeExceptionAny = None
     bit_error_rate: TypeExceptionAny = None
     ge: TypeExceptionAny = None
     uniform: TypeExceptionAny = None
@@ -244,22 +316,22 @@ class DistributionManager:
             distribution.schedule.duration = schedule_respsonse.duration
             distribution.schedule.period = schedule_respsonse.period
 
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        assert self._current
+        yield from self._current.apply(impairment)
+
 
 @dataclass
 class ImpairmentConfigBase:
     enable: enums.OnOff = enums.OnOff.OFF
-
-    # def tokens_of_get(self, impairment: Any) -> Generator[misc.Token, None, None]:
 
 
 @dataclass
 class ImpairmentWithDistribution(ImpairmentConfigBase):
     distribution: DistributionManager = field(default_factory=DistributionManager)
 
-
-class ImpairmentDropConfigMain(ImpairmentWithDistribution):
-    pass
-
+    def apply(self, impairment: TImpairment) -> GenratorToken:
+        yield from self.distribution.apply(impairment)
 
 @dataclass
 class ImpairmentConfigPolicer:
