@@ -34,7 +34,7 @@ async def main():
 
     tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False, debug=False)
     module = await tester_manager.use_module(module_id=2, reserve=False)
-    port = await tester_manager.use_port(module_id=2, port_id=3, reserve=False)
+    port = await tester_manager.use_port(module_id=2, port_id=2, reserve=False)
 
     port_config = await port.config.get()
     await port.reserve_if_not()
@@ -48,21 +48,22 @@ async def main():
     current_filter_config = await basic_filter_mode.get()
     logger.debug(current_filter_config)
 
-    with open('basic_filter_config.json', 'w') as fp:
-        fp.write((current_filter_config.json()))
-
-    drop_config = await flow.drop.get()
-    logger.debug(drop_config)
-
-    fixed_burst = FixedBurst()
-    fixed_burst.repeat(period=2)
+    # drop_config = await flow.drop.get()
+    # logger.debug(drop_config)
+    # fixed_burst = FixedBurst()
+    # fixed_burst.repeat(period=2)
     # await flow.drop.apply(fixed_burst) # send config
-    drop_config.distribution.set_distribution(fixed_burst)
+    # drop_config.distribution.set_distribution(fixed_burst)
     # distribution = drop_config.distribution.get_current_distribution()
     # assert distribution is fixed_burst
-    await flow.drop.set(drop_config)
-    await flow.drop.start(True)
+    # await flow.drop.set(drop_config)
+    # await flow.drop.start(True)
 
+    # fixed_burst = FixedBurst()
+    # fixed_burst.one_shot()
+    # mis_ordering_config = await flow.misordering.get()
+    # mis_ordering_config.distribution.set_distribution(fixed_burst)
+    # await flow.misordering.set(mis_ordering_config)
     latency_jtter_config = await flow.latency_jitter.get()
     logger.debug(latency_jtter_config)
     # latency_jtter_config.constant_delay.delay = 1000000
@@ -72,8 +73,8 @@ async def main():
     # await flow.latency_jitter.enable(True)
 
 
-    policer_config = await flow.policer.get()
-    logger.debug(policer_config)
+    # policer_config = await flow.policer.get()
+    # logger.debug(policer_config)
 
 if __name__ == '__main__':
     loop = asyncio.new_event_loop()
