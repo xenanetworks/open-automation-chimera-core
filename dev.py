@@ -5,7 +5,7 @@ from loguru import logger
 from xoa_driver import enums
 
 from chimera_core import controller, types
-from chimera_core.core.manager.dataset import FixedBurst, ProtocolSegement
+from chimera_core.core.manager.dataset import FixedBurst, ProtocolSegement, ConstantDelay
 
 
 TESTER_IP_ADDRESS = '87.61.110.118'
@@ -66,12 +66,13 @@ async def main():
     # await flow.misordering.set(mis_ordering_config)
     latency_jtter_config = await flow.latency_jitter.get()
     logger.debug(latency_jtter_config)
-    # latency_jtter_config.constant_delay.delay = 1000000
-    # latency_jtter_config.schedule.duration = 2
+
+    constant_delay = ConstantDelay()
+    constant_delay.delay = 100000
+    latency_jtter_config.distribution.set_distribution(constant_delay)
     # latency_jtter_config.schedule.period = 0
     # await flow.latency_jitter.set(latency_jtter_config)
     # await flow.latency_jitter.enable(True)
-
 
     # policer_config = await flow.policer.get()
     # logger.debug(policer_config)

@@ -26,6 +26,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 
 from .dataset import (
     TPLD_FILTERS_LENGTH,
+    ImpairmentConfigCorruption,
     ImpairmentConfigPolicer,
     DistributionResponseValidator,
     ImpairmentWithDistribution,
@@ -174,6 +175,7 @@ class ImpairmentLatencyJitter(ImpairmentConfiguratorBase[CLatencyJitterImpairmen
         config.distribution.set_schedule(schedule)
         return config
 
+
 class ImpairmentDuplication(ImpairmentConfiguratorBase[CDuplicationImpairment]):
     async def get(self) -> ImpairmentWithDistribution:
         enable, schedule = await self._get_enable_and_schedule()
@@ -196,6 +198,43 @@ class ImpairmentDuplication(ImpairmentConfiguratorBase[CDuplicationImpairment]):
         config.distribution.load_value_from_server_response(DistributionResponseValidator(
             constant_delay=constant_delay,
             accumulate_and_burst=accumulate_and_burst,
+            step=step,
+            uniform=uniform,
+            gaussian=gaussian,
+            posion=poison,
+            gamma=gamma,
+            custom=custom,
+        ))
+        config.distribution.set_schedule(schedule)
+        return config
+
+
+class ImpairmentCorruption(ImpairmentConfiguratorBase[CCorruptionImpairment]):
+    async def get(self) -> ImpairmentWithDistribution:
+        schedule, corrpption_type, fixed_burst, random_burst, fixed_rate, \
+            bit_error_rate, random_rate, ge,uniform, gaussian, poison, \
+                gamma, custom = await asyncio.gather(*(
+            self.impairment.schedule.get(),
+            self.impairment.type.get(),
+            self.impairment.distribution.fixed_burst.get(),
+            self.impairment.distribution.random_burst.get(),
+            self.impairment.distribution.fixed_rate.get(),
+            self.impairment.distribution.bit_error_rate.get(),
+            self.impairment.distribution.random_rate.get(),
+            self.impairment.distribution.ge.get(),
+            self.impairment.distribution.uniform.get(),
+            self.impairment.distribution.gaussian.get(),
+            self.impairment.distribution.poisson.get(),
+            self.impairment.distribution.gamma.get(),
+            self.impairment.distribution.custom.get(),
+        ), return_exceptions=True)
+
+        config = ImpairmentConfigCorruption()
+        config.distribution.load_value_from_server_response(DistributionResponseValidator(
+            fixed_burst=fixed_burst,
+            random_burst=random_burst,
+            fixed_rate=fixed_rate,
+            bit_error_rate=bit_error_rate,
             step=step,
             uniform=uniform,
             gaussian=gaussian,

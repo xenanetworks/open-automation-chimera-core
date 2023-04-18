@@ -112,6 +112,13 @@ class DistributionWithBurstSchedule(DistributionConfigBase):
         yield from self.schedule.apply(impairment)
 
 
+class DistributionWithFixedContinuousSchedule(DistributionConfigBase):
+    schedule: Schedule = field(default_factory=lambda: Schedule(duration=1, period=0))
+
+    def apply(self, impairment: TImpairment) -> GeneratorToken:
+        yield from self.schedule.apply(impairment)
+
+
 class DistributionWithNonBurstSchedule(DistributionConfigBase):
     schedule: Schedule = Schedule()
 
@@ -262,7 +269,7 @@ class RandomRate(DistributionWithNonBurstSchedule):
 
 
 @dataclass
-class ConstantDelay(DistributionConfigBase):
+class ConstantDelay(DistributionWithFixedContinuousSchedule):
     delay: int = 0
 
     def apply(self, impairment: TImpairment) -> GeneratorToken:
@@ -308,6 +315,7 @@ distribution_class: Dict[str, Type[DistributionConfigBase]] = {
     'gamma': Gamma,
     'custom': Custom,
     'accumulate_and_burst': AccumulateBurst,
+    'constant_delay': ConstantDelay,
 }
 
 
@@ -343,6 +351,15 @@ class DistributionManager:
 @dataclass
 class ImpairmentConfigBase:
     enable: enums.OnOff = enums.OnOff.OFF
+
+
+@dataclass
+class ImpairmentConfigCorruption:
+    corruption_type: enums.CorruptionType = enums.CorruptionType.ETH
+    distribution: DistributionManager = field(default_factory=DistributionManager)
+
+    def apply(self, impairment: TImpairment) -> GeneratorToken:
+        yield from self.distribution.apply(impairment)
 
 
 @dataclass
