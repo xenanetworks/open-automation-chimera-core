@@ -29,11 +29,10 @@ from .dataset import (
     ImpairmentConfigCorruption,
     ImpairmentConfigPolicer,
     DistributionResponseValidator,
+    ImpairmentConfigShaper,
     ImpairmentWithDistribution,
     InnerOuter,
-    LatencyJitterConfigMain,
     ProtocolSegement,
-    Schedule,
     ShadowFilterConfigAnyField,
     ShadowFilterConfigBasic,
     ShadowFilterConfigEthernet,
@@ -210,9 +209,9 @@ class ImpairmentDuplication(ImpairmentConfiguratorBase[CDuplicationImpairment]):
 
 
 class ImpairmentCorruption(ImpairmentConfiguratorBase[CCorruptionImpairment]):
-    async def get(self) -> ImpairmentWithDistribution:
-        schedule, corrpption_type, fixed_burst, random_burst, fixed_rate, \
-            bit_error_rate, random_rate, ge,uniform, gaussian, poison, \
+    async def get(self) -> ImpairmentConfigCorruption:
+        schedule, corruption, fixed_burst, random_burst, fixed_rate, \
+            bit_error_rate, random_rate, ge, uniform, gaussian, poison, \
                 gamma, custom = await asyncio.gather(*(
             self.impairment.schedule.get(),
             self.impairment.type.get(),
@@ -229,18 +228,20 @@ class ImpairmentCorruption(ImpairmentConfiguratorBase[CCorruptionImpairment]):
             self.impairment.distribution.custom.get(),
         ), return_exceptions=True)
 
-        config = ImpairmentConfigCorruption()
+        logger.debug(corruption)
+        config = ImpairmentConfigCorruption(corruption_type=corruption.corruption_type)
         config.distribution.load_value_from_server_response(DistributionResponseValidator(
             fixed_burst=fixed_burst,
             random_burst=random_burst,
             fixed_rate=fixed_rate,
             bit_error_rate=bit_error_rate,
-            step=step,
             uniform=uniform,
             gaussian=gaussian,
             posion=poison,
             gamma=gamma,
             custom=custom,
+            random_rate=random_rate,
+            ge=ge,
         ))
         config.distribution.set_schedule(schedule)
         return config
@@ -258,6 +259,23 @@ class ImpairmentPolicer(ImpairmentConfiguratorBase[CPolicerImpairment]):
             mode=enums.PolicerMode(config.mode),
             cir=config.cir,
             cbs=config.cbs,
+        )
+        return config
+
+
+class ImpairmentSharper(ImpairmentConfiguratorBase[CShaperImpairment]):
+    def __init__(self, impairment: "CShaperImpairment"):
+        self.impairment = impairment
+
+    async def get(self) -> ImpairmentConfigShaper:
+        config = await self.impairment.config.get()
+
+        config = ImpairmentConfigShaper(
+            on_off=enums.OnOff(config.on_off),
+            mode=enums.PolicerMode(config.mode),
+            cir=config.cir,
+            cbs=config.cbs,
+            buffer_size=config.buffer_size,
         )
         return config
 

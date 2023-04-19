@@ -77,15 +77,13 @@ class DistributionConfigBase:
 
     def load_server_value(self, distribution_token_response: Any) -> None:
         for field in self:
-            if (value := getattr(distribution_token_response, field.name)):
+            if hasattr(distribution_token_response, field.name) and (value := getattr(distribution_token_response, field.name)):
                 setattr(self, field.name, value)
             # else:
             #     raise ValueError(f'{self} {field_name} could not be None')
 
     def apply(self, impairment: TImpairment) -> GeneratorToken:
         raise NotImplementedError
-
-
 
 
 @dataclass
@@ -97,8 +95,9 @@ class Schedule:
         yield impairment.schedule.set(duration=self.duration, period=self.period)
 
 
+@dataclass
 class DistributionWithBurstSchedule(DistributionConfigBase):
-    schedule: Schedule = Schedule()
+    schedule: Schedule = field(default_factory=Schedule)
 
     def one_shot(self) -> None:
         self.schedule.duration = 1
@@ -112,6 +111,7 @@ class DistributionWithBurstSchedule(DistributionConfigBase):
         yield from self.schedule.apply(impairment)
 
 
+@dataclass
 class DistributionWithFixedContinuousSchedule(DistributionConfigBase):
     schedule: Schedule = field(default_factory=lambda: Schedule(duration=1, period=0))
 
@@ -119,8 +119,9 @@ class DistributionWithFixedContinuousSchedule(DistributionConfigBase):
         yield from self.schedule.apply(impairment)
 
 
+@dataclass
 class DistributionWithNonBurstSchedule(DistributionConfigBase):
-    schedule: Schedule = Schedule()
+    schedule: Schedule = field(default_factory=Schedule)
 
     def continuous(self) -> None:
         self.duration = 1
@@ -134,6 +135,7 @@ class DistributionWithNonBurstSchedule(DistributionConfigBase):
         yield from self.schedule.apply(impairment)
 
 
+@dataclass
 class FixedBurst(DistributionWithBurstSchedule):
     burst_size: int = 0
 
@@ -330,9 +332,11 @@ class DistributionManager:
         self._current = distribution
 
     def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
-        logger.debug(validator)
         for distribution_name, distribution_response in validator.filter_valid_distribution:
+            logger.debug(distribution_name)
             distribution_config = distribution_class[distribution_name]()
+            logger.debug(distribution_config)
+            logger.debug(distribution_response)
             distribution_config.load_server_value(distribution_response)
             self.set_distribution(distribution_config)
 
@@ -377,6 +381,14 @@ class ImpairmentConfigPolicer:
     cir: int = 0
     cbs: int = 0
 
+
+@dataclass
+class ImpairmentConfigShaper:
+    on_off: enums.OnOff = enums.OnOff.OFF
+    mode: enums.PolicerMode = enums.PolicerMode.L2
+    cir: int = 0
+    cbs: int = 0
+    buffer_size: int = 0
 
 class LatencyJitterConfigMain(ImpairmentConfigBase):
     constant_delay: ConstantDelay = ConstantDelay()
