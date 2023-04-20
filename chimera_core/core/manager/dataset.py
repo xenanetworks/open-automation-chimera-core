@@ -12,6 +12,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CLatencyJitterImpairment,
     CDropImpairment,
     CMisorderingImpairment,
+    CShaperImpairment,
 )
 
 
@@ -333,10 +334,7 @@ class DistributionManager:
 
     def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
         for distribution_name, distribution_response in validator.filter_valid_distribution:
-            logger.debug(distribution_name)
             distribution_config = distribution_class[distribution_name]()
-            logger.debug(distribution_config)
-            logger.debug(distribution_response)
             distribution_config.load_server_value(distribution_response)
             self.set_distribution(distribution_config)
 
@@ -389,6 +387,15 @@ class ImpairmentConfigShaper:
     cir: int = 0
     cbs: int = 0
     buffer_size: int = 0
+
+    def start(self, impairment: CShaperImpairment) -> GeneratorToken:
+        yield impairment.config.set(
+            on_off=enums.OnOff.ON,
+            mode=self.mode,
+            cir=self.cir,
+            cbs=self.cbs,
+            buffer_size=self.buffer_size,
+        )
 
 class LatencyJitterConfigMain(ImpairmentConfigBase):
     constant_delay: ConstantDelay = ConstantDelay()

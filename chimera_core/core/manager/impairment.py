@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import dataclass
 import itertools
 from typing import (
     TYPE_CHECKING,
@@ -90,12 +91,24 @@ T = TypeVar(
 class ImpairmentConfiguratorBase(Generic[T]):
     def __init__(self, impairment: T):
         self.impairment = impairment
+        self.config: Optional[Any] = None
 
-    async def start(self, state: bool) -> None:
-        await self.impairment.enable.set(enums.OnOff(state))
+    async def start(self, config: Optional[Any] = None) -> None:
+        await self.toggle(True, config)
+        # if isinstance(self, (CPolicerImpairment, CShaperImpairment)):
+        #     await self.config.set()
+        # await self.impairment.enable.set(enums.OnOff(state))
+
+    async def stop(self, config: Optional[Any] = None) -> None:
+        await self.toggle(False, config)
+
+    async def toggle(self, state: bool, config: Optional[Any] = None) -> None:
+        config = config or self.config
+        assert config, "Config not exists"
+        await asyncio.gather(*config.start() if state else config.stop())
 
     async def _get_enable_and_schedule(self) -> Tuple[commands.PED_ENABLE.GetDataAttr, commands.PED_SCHEDULE.GetDataAttr]:
-        assert not isinstance(self.impairment, CPolicerImpairment)
+        assert not isinstance(self.impairment, (CPolicerImpairment, CShaperImpairment))
         enable, schedule = await asyncio.gather(*(
             self.impairment.enable.get(),
             self.impairment.schedule.get(),
@@ -263,7 +276,7 @@ class ImpairmentPolicer(ImpairmentConfiguratorBase[CPolicerImpairment]):
         return config
 
 
-class ImpairmentSharper(ImpairmentConfiguratorBase[CShaperImpairment]):
+class ImpairmentShaper(ImpairmentConfiguratorBase[CShaperImpairment]):
     def __init__(self, impairment: "CShaperImpairment"):
         self.impairment = impairment
 

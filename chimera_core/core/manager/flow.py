@@ -6,7 +6,7 @@ from chimera_core.core.manager.impairment import (
     ImpairmentDuplication,
     ImpairmentMisordering,
     ImpairmentLatencyJitter,
-    ImpairmentSharper,
+    ImpairmentShaper,
     ShadowFilterManager,
     ImpairmentDrop,
     ImpairmentPolicer,
@@ -26,7 +26,7 @@ class FlowManager:
         self.duplication = ImpairmentDuplication(flow.duplication)
         self.corruption = ImpairmentCorruption(flow.corruption)
         self.policer = ImpairmentPolicer(flow.policer)
-        self.sharper = ImpairmentSharper(flow.policer)
+        self.shaper = ImpairmentShaper(flow.shaper)
 
 
 @dataclass
