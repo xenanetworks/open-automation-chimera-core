@@ -42,10 +42,15 @@ async def main():
     # port_config.emulate = enums.OnOff.ON
     # await port.config.set(port_config)
 
-    flow = port.flows[2]
+    flow = port.flows[1]
 
     # await flow.shadow_filter.reset()
+    extend_filter_mode = await flow.shadow_filter.use_extended_mode()
+    config = await extend_filter_mode.get()
+    logger.debug(config)
+    return
     basic_filter_mode = await flow.shadow_filter.use_basic_mode()  # or use_extend_mode()
+
     current_filter_config = await basic_filter_mode.get()
     logger.debug(current_filter_config)
 

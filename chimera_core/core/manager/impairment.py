@@ -24,6 +24,7 @@ from xoa_driver.lli import commands
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import ModeExtendedS
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ProtocolSegment as HLIProtocolSegment
 
 from .dataset import (
     TPLD_FILTERS_LENGTH,
@@ -308,14 +309,30 @@ class ShadowFilterConfiguratorExtended:
         self.shadow_filter = filter_
         self.extended_mode = extended_mode
 
+    async def get_protocol_configs(self, protocol_segment: HLIProtocolSegment):
+        value, mask = await utils.apply(
+            protocol_segment.value.get(),
+            protocol_segment.mask.get(),
+        )
+            value = ''.join(h.replace('0x', '') for h in data[1][0].value)
+            mask = ''.join(h.replace('0x', '') for h in data[1][1].masks)
+        return ProtocolSegement(
+            protocol_type=protocol_segment.segment_type,
+            value=value,
+            mask=mask,
+        )
+
+
     async def get(self) -> ShadowFilterConfigExtended:
         protocol_types = await self.extended_mode.get_protocol_segments()
+        logger.debug(protocol_types)
         segments_data = await asyncio.gather(*(
             utils.apply(
                 proto.value.get(),
                 proto.mask.get(),
             ) for proto in protocol_types
         ))
+        logger.debug(segments_data)
         protocol_segments = []
         for data in zip(protocol_types, segments_data):
             value = ''.join(h.replace('0x', '') for h in data[1][0].value)
