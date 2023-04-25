@@ -309,41 +309,43 @@ class ShadowFilterConfiguratorExtended:
         self.shadow_filter = filter_
         self.extended_mode = extended_mode
 
-    async def get_protocol_configs(self, protocol_segment: HLIProtocolSegment):
+    async def get_single_protocol_segment_content(self, protocol_segment: HLIProtocolSegment) -> ProtocolSegement:
         value, mask = await utils.apply(
             protocol_segment.value.get(),
             protocol_segment.mask.get(),
         )
-            value = ''.join(h.replace('0x', '') for h in data[1][0].value)
-            mask = ''.join(h.replace('0x', '') for h in data[1][1].masks)
+        value = ''.join(h.replace('0x', '') for h in value.value)
+        mask = ''.join(h.replace('0x', '') for h in mask.masks)
         return ProtocolSegement(
             protocol_type=protocol_segment.segment_type,
             value=value,
             mask=mask,
         )
 
+    async def set_single_protocol_segment_content(self, protocol_segment: HLIProtocolSegment, value: str, mask: str) -> None:
+        await utils.apply(
+            protocol_segment.value.set(value),
+            protocol_segment.mask.set(mask),
+        )
 
     async def get(self) -> ShadowFilterConfigExtended:
         protocol_types = await self.extended_mode.get_protocol_segments()
-        logger.debug(protocol_types)
-        segments_data = await asyncio.gather(*(
-            utils.apply(
-                proto.value.get(),
-                proto.mask.get(),
-            ) for proto in protocol_types
+        segments = await asyncio.gather(*(
+            self.get_single_protocol_segment_content(protocol_segment=proto) for proto in protocol_types
         ))
-        logger.debug(segments_data)
-        protocol_segments = []
-        for data in zip(protocol_types, segments_data):
-            value = ''.join(h.replace('0x', '') for h in data[1][0].value)
-            mask = ''.join(h.replace('0x', '') for h in data[1][1].masks)
-            protocol_segments.append(
-                ProtocolSegement(protocol_type=data[0].segment_type, value=value, mask=mask)
-            )
-        return ShadowFilterConfigExtended(protocol_segments=tuple(protocol_segments))
+        return ShadowFilterConfigExtended(protocol_segments=tuple(segments))
 
     async def set(self, config: ShadowFilterConfigExtended) -> None:
-        await self.extended_mode.use_segments(*(proto.protocol_type for proto in config.protocol_segments[:1]))
+        await self.extended_mode.use_segments(*(proto.protocol_type for proto in config.protocol_segments[1:]))
+        protocol_types = await self.extended_mode.get_protocol_segments()
+        await asyncio.gather(*(
+            self.set_single_protocol_segment_content(
+                protocol_segment=proto,
+                value=config.protocol_segments[idx].value,
+                mask=config.protocol_segments[idx].mask,
+            )
+                for idx, proto in enumerate(protocol_types)
+        ))
 
 
 class ShadowFilterConfiguratorBasic:
@@ -357,7 +359,7 @@ class ShadowFilterConfiguratorBasic:
             l3, ipv4, ipv4_src_addr, ipv4_dest_addr, ipv4_dscp, ipv6, ipv6_src_addr, ipv6_dest_addr, \
             tcp, tcp_src_port, tcp_dest_port, \
             tpld, *tpld_id_settings, \
-            any_, any_field = await asyncio.gather(*(
+            any_, any_field = values = await asyncio.gather(*(
                 self.basic_mode.ethernet.settings.get(),
                 self.basic_mode.ethernet.src_address.get(),
                 self.basic_mode.ethernet.dest_address.get(),
@@ -395,6 +397,8 @@ class ShadowFilterConfiguratorBasic:
                 self.basic_mode.any.config.get(),
 
             ), return_exceptions=True)
+
+        logger.warning(values)
 
         config_ethernet = ShadowFilterConfigEthernet(
             filter_use=enums.FilterUse(ethernet.use),

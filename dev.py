@@ -33,29 +33,32 @@ async def main():
     my_tester_info = await my_controller.list_testers()
     my_tester_info = my_tester_info[my_tester_credential.id]
 
-    tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False, debug=False)
+    tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False, debug=True)
     module = await tester_manager.use_module(module_id=2, reserve=False)
     port = await tester_manager.use_port(module_id=2, port_id=2, reserve=False)
 
     port_config = await port.config.get()
+    logger.debug(port_config)
     await port.reserve_if_not()
-    # port_config.emulate = enums.OnOff.ON
-    # await port.config.set(port_config)
+    port_config.set_emulate_on()
+    await port.config.set(port_config)
 
     flow = port.flows[1]
 
     # await flow.shadow_filter.reset()
-    extend_filter_mode = await flow.shadow_filter.use_extended_mode()
-    config = await extend_filter_mode.get()
-    logger.debug(config)
-    return
+    # extend_filter_mode = await flow.shadow_filter.use_extended_mode()
+    # config = await extend_filter_mode.get()
+    # logger.debug(config)
+    # config.protocol_segments = config.protocol_segments[:2]
+    # await extend_filter_mode.set(config)
+    # logger.debug('-'*40)
+    # config = await extend_filter_mode.get()
+    # logger.debug(config)
     basic_filter_mode = await flow.shadow_filter.use_basic_mode()  # or use_extend_mode()
-
     current_filter_config = await basic_filter_mode.get()
     logger.debug(current_filter_config)
-
-    drop_config = await flow.drop.get()
-    logger.debug(drop_config)
+    # drop_config = await flow.drop.get()
+    # logger.debug(drop_config)
     # fixed_burst = FixedBurst()
     # fixed_burst.repeat(period=2)
     # await flow.drop.apply(fixed_burst) # send config

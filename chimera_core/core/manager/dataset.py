@@ -37,15 +37,22 @@ class PortConfigPulseError(PortConfigPcsPmaBase):
     exp: int = -4
 
 
-class PortConfig(BaseModel):
+@dataclass
+class PortConfig:
     comment: str = ''
     enable_tx: bool = True
     autoneg_selection: bool = False
     emulate: enums.OnOff = enums.OnOff.OFF
     tpld_mode: enums.TPLDMode = enums.TPLDMode.NORMAL
     fcs_error_mode: enums.OnOff = enums.OnOff.OFF
-    link_flap: PortConfigLinkFlap = PortConfigLinkFlap()
-    pulse_error: PortConfigPulseError = PortConfigPulseError()
+    link_flap: PortConfigLinkFlap = field(default_factory=PortConfigLinkFlap)
+    pulse_error: PortConfigPulseError = field(default_factory=PortConfigPulseError)
+
+    def set_emulate(self, on_off: enums.OnOff) -> None:
+        self.emulate = on_off
+
+    set_emulate_on = partialmethod(set_emulate, enums.OnOff.ON)
+    set_emulate_off = partialmethod(set_emulate, enums.OnOff.OFF)
 
 
 class ModuleConfig(BaseModel):
