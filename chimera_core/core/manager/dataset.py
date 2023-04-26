@@ -395,6 +395,16 @@ class ImpairmentConfigShaper:
     cbs: int = 0
     buffer_size: int = 0
 
+    async def set(self, impairment: CShaperImpairment) -> None:
+        impairment.config.set(
+            on_off=self.on_off,
+            mode=self.mode,
+            cir=self.cir,
+            cbs=self.cbs,
+            buffer_size=self.buffer_size,
+        )
+
+
     def start(self, impairment: CShaperImpairment) -> GeneratorToken:
         yield impairment.config.set(
             on_off=enums.OnOff.ON,

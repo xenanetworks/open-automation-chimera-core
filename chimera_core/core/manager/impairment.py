@@ -106,7 +106,7 @@ class ImpairmentConfiguratorBase(Generic[T]):
     async def toggle(self, state: bool, config: Optional[Any] = None) -> None:
         config = config or self.config
         assert config, "Config not exists"
-        await asyncio.gather(*config.start() if state else config.stop())
+        await asyncio.gather(*config.start(self.impairment) if state else config.stop())
 
     async def _get_enable_and_schedule(self) -> Tuple[commands.PED_ENABLE.GetDataAttr, commands.PED_SCHEDULE.GetDataAttr]:
         assert not isinstance(self.impairment, (CPolicerImpairment, CShaperImpairment))
