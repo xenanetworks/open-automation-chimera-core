@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, TYPE_CHECKING
 
+from chimera_core.core.manager.impairments.drop import ImpairmentDrop
 from chimera_core.core.manager.impairment import (
     ImpairmentCorruption,
     ImpairmentDuplication,
@@ -8,7 +9,6 @@ from chimera_core.core.manager.impairment import (
     ImpairmentLatencyJitter,
     ImpairmentShaper,
     ShadowFilterManager,
-    ImpairmentDrop,
     ImpairmentPolicer,
 )
 

@@ -5,6 +5,7 @@ from enum import Enum
 from functools import partial, partialmethod
 from loguru import logger
 
+from pydantic import BaseModel
 from xoa_driver import enums
 from xoa_driver.v2 import misc
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
@@ -15,23 +16,22 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
 )
 
 
+INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
+TPLD_FILTERS_LENGTH = 16
+
 GeneratorToken = Generator[misc.Token, None, None]
 
-
-@dataclass
-class PortConfigPcsPmaBase:
+class PortConfigPcsPmaBase(BaseModel):
     enable: enums.OnOff = enums.OnOff.OFF
     duration: int = 100
     period: int = 10000
     repetition: int = 0
 
 
-@dataclass
 class PortConfigLinkFlap(PortConfigPcsPmaBase):
     pass
 
 
-@dataclass
 class PortConfigPulseError(PortConfigPcsPmaBase):
     coeff: int = 1
     exp: int = -4
@@ -55,8 +55,7 @@ class PortConfig:
     set_emulate_off = partialmethod(set_emulate, enums.OnOff.OFF)
 
 
-@dataclass
-class ModuleConfig:
+class ModuleConfig(BaseModel):
     comment: str = ''
     timing_source: enums.TimingSource = enums.TimingSource.CHASSIS
     clock_ppb: int = 1
@@ -70,7 +69,7 @@ class ModuleConfig:
     bypass_mode: enums.OnOff = enums.OnOff.OFF
 
 
-TypeTokenResponseOrError = Union[Exception, Any]
+TypeExceptionAny = Union[Exception, Any, None]
 
 
 TImpairment = Union[
@@ -290,20 +289,20 @@ class ConstantDelay(DistributionWithFixedContinuousSchedule):
 
 class DistributionResponseValidator(NamedTuple):
     """If get command return NOTVALID, the config was not being set"""
-    fixed_burst: TypeTokenResponseOrError = None
-    random_burst: TypeTokenResponseOrError = None
-    fixed_rate: TypeTokenResponseOrError = None
-    random_rate: TypeTokenResponseOrError = None
-    bit_error_rate: TypeTokenResponseOrError = None
-    ge: TypeTokenResponseOrError = None
-    uniform: TypeTokenResponseOrError = None
-    gaussian: TypeTokenResponseOrError = None
-    gamma: TypeTokenResponseOrError = None
-    poisson: TypeTokenResponseOrError = None
-    custom: TypeTokenResponseOrError = None
-    accumulate_and_burst: TypeTokenResponseOrError = None
-    constant_delay: TypeTokenResponseOrError = None
-    step: TypeTokenResponseOrError = None
+    fixed_burst: TypeExceptionAny = None
+    random_burst: TypeExceptionAny = None
+    fixed_rate: TypeExceptionAny = None
+    random_rate: TypeExceptionAny = None
+    bit_error_rate: TypeExceptionAny = None
+    ge: TypeExceptionAny = None
+    uniform: TypeExceptionAny = None
+    gaussian: TypeExceptionAny = None
+    gamma: TypeExceptionAny = None
+    poisson: TypeExceptionAny = None
+    custom: TypeExceptionAny = None
+    accumulate_and_burst: TypeExceptionAny = None
+    constant_delay: TypeExceptionAny = None
+    step: TypeExceptionAny = None
 
     @property
     def filter_valid_distribution(self) -> Generator[Tuple[str, Any], None, None]:
@@ -415,16 +414,14 @@ class ImpairmentConfigShaper:
             buffer_size=self.buffer_size,
         )
 
-@dataclass
 class LatencyJitterConfigMain(ImpairmentConfigBase):
-    constant_delay: ConstantDelay = field(default_factory=ConstantDelay)
+    constant_delay: ConstantDelay = ConstantDelay()
 
 
 FFF_HEX = 'FFF'
 
 
-@dataclass
-class InnerOuter:
+class InnerOuter(BaseModel):
     use: enums.OnOff = enums.OnOff.OFF
     mask: str = FFF_HEX
     value: int = 0
@@ -438,8 +435,7 @@ class InnerOuter:
         self.mask = mask
 
 
-@dataclass
-class FilterConfigCommon:
+class FilterConfigCommon(BaseModel):
     filter_use: enums.FilterUse = enums.FilterUse.OFF
     match_action: enums.InfoAction = enums.InfoAction.INCLUDE
 
@@ -465,7 +461,6 @@ class FilterConfigCommon:
         self.match_action = enums.InfoAction.INCLUDE if include else enums.InfoAction.EXCLUDE
 
 
-@dataclass
 class ShadowFilterConfigEthernetAddr(InnerOuter):
     value: str = '000000000000'
 
@@ -475,33 +470,29 @@ class ShadowFilterConfigEthernetAddr(InnerOuter):
         self.mask = mask
 
 
-@dataclass
 class ShadowFilterConfigEthernet(FilterConfigCommon):
-    src_addr: ShadowFilterConfigEthernetAddr = field(default_factory=ShadowFilterConfigEthernetAddr)
-    dest_addr: ShadowFilterConfigEthernetAddr = field(default_factory=ShadowFilterConfigEthernetAddr)
+    src_addr: ShadowFilterConfigEthernetAddr = ShadowFilterConfigEthernetAddr()
+    dest_addr: ShadowFilterConfigEthernetAddr = ShadowFilterConfigEthernetAddr()
 
 
-@dataclass
 class ShadowFilterConfigL2VLAN(FilterConfigCommon):
     # inner
-    tag_inner: InnerOuter = field(default_factory=InnerOuter)
-    pcp_inner: InnerOuter = field(default_factory=InnerOuter)
+    tag_inner: InnerOuter = InnerOuter()
+    pcp_inner: InnerOuter = InnerOuter()
     # outer
-    tag_outer: InnerOuter = field(default_factory=InnerOuter)
-    pcp_outer: InnerOuter = field(default_factory=InnerOuter)
+    tag_outer: InnerOuter = InnerOuter()
+    pcp_outer: InnerOuter = InnerOuter()
 
 
-@dataclass
 class ShadowFilterConfigL2MPLS(FilterConfigCommon):
-    label: InnerOuter = field(default_factory=InnerOuter)
-    toc: InnerOuter = field(default_factory=InnerOuter)
+    label: InnerOuter = InnerOuter()
+    toc: InnerOuter = InnerOuter()
 
 
-@dataclass
-class ShadowFilterLayer2Plus:
+class ShadowFilterLayer2Plus(BaseModel):
     present: enums.L2PlusPresent = enums.L2PlusPresent.NA
-    vlan: ShadowFilterConfigL2VLAN = field(default_factory=ShadowFilterConfigL2VLAN)
-    mpls: ShadowFilterConfigL2MPLS = field(default_factory=ShadowFilterConfigL2MPLS)
+    vlan: ShadowFilterConfigL2VLAN = ShadowFilterConfigL2VLAN()
+    mpls: ShadowFilterConfigL2MPLS = ShadowFilterConfigL2MPLS()
 
     def use_none(self) -> None:
         self.present = enums.L2PlusPresent.NA
@@ -522,7 +513,6 @@ class ShadowFilterLayer2Plus:
 TypeIPv4 = Union[str, int, ipaddress.IPv4Address]
 
 
-@dataclass
 class ShadowFilterConfigL2IPv4Addr(InnerOuter):
     value: TypeIPv4 = '0.0.0.0'
 
@@ -532,19 +522,16 @@ class ShadowFilterConfigL2IPv4Addr(InnerOuter):
         self.mask = mask
 
 
-@dataclass
 class ShadowFilterConfigL2IPv4DSCP(InnerOuter):
     pass
 
 
-@dataclass
 class ShadowFilterConfigL3IPv4(FilterConfigCommon):
-    src_addr: ShadowFilterConfigL2IPv4Addr = field(default_factory=ShadowFilterConfigL2IPv4Addr)
-    dest_addr: ShadowFilterConfigL2IPv4Addr = field(default_factory=ShadowFilterConfigL2IPv4Addr)
-    dscp: ShadowFilterConfigL2IPv4DSCP = field(default_factory=ShadowFilterConfigL2IPv4DSCP)
+    src_addr: ShadowFilterConfigL2IPv4Addr = ShadowFilterConfigL2IPv4Addr()
+    dest_addr: ShadowFilterConfigL2IPv4Addr = ShadowFilterConfigL2IPv4Addr()
+    dscp: ShadowFilterConfigL2IPv4DSCP = ShadowFilterConfigL2IPv4DSCP()
 
 
-@dataclass
 class ShadowFilterConfigBasicIPv6SRCADDR(InnerOuter):
     value: str = '::'
     mask: str = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
@@ -555,22 +542,19 @@ class ShadowFilterConfigBasicIPv6SRCADDR(InnerOuter):
         self.mask = mask
 
 
-@dataclass
 class ShadowFilterConfigBasicIPv6DESTADDR(ShadowFilterConfigBasicIPv6SRCADDR):
     pass
 
 
-@dataclass
 class ShadowFilterConfigL3IPv6(FilterConfigCommon):
-    src_addr: ShadowFilterConfigBasicIPv6SRCADDR = field(default_factory=ShadowFilterConfigBasicIPv6SRCADDR)
-    dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = field(default_factory=ShadowFilterConfigBasicIPv6DESTADDR)
+    src_addr: ShadowFilterConfigBasicIPv6SRCADDR = ShadowFilterConfigBasicIPv6SRCADDR()
+    dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = ShadowFilterConfigBasicIPv6DESTADDR()
 
 
-@dataclass
-class ShadowFilterLayer3:
+class ShadowFilterLayer3(BaseModel):
     present: enums.L3PlusPresent = enums.L3PlusPresent.NA
-    ipv4: ShadowFilterConfigL3IPv4 = field(default_factory=ShadowFilterConfigL3IPv4)
-    ipv6: ShadowFilterConfigL3IPv6 = field(default_factory=ShadowFilterConfigL3IPv6)
+    ipv4: ShadowFilterConfigL3IPv4 = ShadowFilterConfigL3IPv4()
+    ipv6: ShadowFilterConfigL3IPv6 = ShadowFilterConfigL3IPv6()
 
     def use_none(self) -> None:
         self.present = enums.L3PlusPresent.NA
@@ -584,31 +568,26 @@ class ShadowFilterLayer3:
         return self.ipv6
 
 
-@dataclass
 class ShadowFilterConfigL4UDPSRCPort(InnerOuter):
     pass
 
 
-@dataclass
 class ShadowFilterConfigL4UDPDESTPort(InnerOuter):
     pass
 
 
-@dataclass
 class ShadowFilterConfigL4TCP(FilterConfigCommon):
-    src_port: InnerOuter = field(default_factory=InnerOuter)
-    dest_port: InnerOuter = field(default_factory=InnerOuter)
+    src_port: InnerOuter = InnerOuter()
+    dest_port: InnerOuter = InnerOuter()
 
 
-@dataclass
 class ShadowFilterConfigL4UDP(ShadowFilterConfigL4TCP):
     pass
 
 
-@dataclass
-class ShadowFilterLayer4:
-    tcp: ShadowFilterConfigL4TCP = field(default_factory=ShadowFilterConfigL4TCP)
-    udp: ShadowFilterConfigL4UDP = field(default_factory=ShadowFilterConfigL4UDP)
+class ShadowFilterLayer4(BaseModel):
+    tcp: ShadowFilterConfigL4TCP = ShadowFilterConfigL4TCP()
+    udp: ShadowFilterConfigL4UDP = ShadowFilterConfigL4UDP()
 
     def use_none(self) -> None:
         pass
@@ -631,21 +610,18 @@ class ShadowFilterConfigTPLDID:
         self.tpld_id = tpld_id
 
 
-@dataclass
 class ShadowFilterConfigTPLD(FilterConfigCommon):
     configs: Tuple[ShadowFilterConfigTPLDID, ...] = tuple(ShadowFilterConfigTPLDID(filter_index=i) for i in range(16))
 
 
-@dataclass
-class ShadowFilterLayerXena:
-    tpld: ShadowFilterConfigTPLD = field(default_factory=ShadowFilterConfigTPLD)
+class ShadowFilterLayerXena(BaseModel):
+    tpld: ShadowFilterConfigTPLD = ShadowFilterConfigTPLD()
 
     def use_tpld(self) -> ShadowFilterConfigTPLD:
         self.tpld._use_and()
         return self.tpld
 
 
-@dataclass
 class ShadowFilterConfigAnyField(FilterConfigCommon):
     position: int = 0
     value: str = '000000000000'
@@ -657,40 +633,35 @@ class ShadowFilterConfigAnyField(FilterConfigCommon):
         self.mask = mask
 
 
-@dataclass
 class ShadowFilterLayerAny(FilterConfigCommon):
-    any_field: ShadowFilterConfigAnyField = field(default_factory=ShadowFilterConfigAnyField)
+    any_field: ShadowFilterConfigAnyField = ShadowFilterConfigAnyField()
 
     def use_any_field(self) -> ShadowFilterConfigAnyField:
         self.any_field._use_and()
         return self.any_field
 
 
-@dataclass
-class ShadowFilterLayer2:
-    ethernet: ShadowFilterConfigEthernet = field(default_factory=ShadowFilterConfigEthernet)
+class ShadowFilterLayer2(BaseModel):
+    ethernet: ShadowFilterConfigEthernet = ShadowFilterConfigEthernet()
 
     def use_ethernet(self) -> ShadowFilterConfigEthernet:
         return self.ethernet
 
 
-@dataclass
-class ShadowFilterConfigBasic:
-    layer_2: ShadowFilterLayer2 = field(default_factory=ShadowFilterLayer2)
-    layer_2_plus: ShadowFilterLayer2Plus = field(default_factory=ShadowFilterLayer2Plus)
-    layer_3: ShadowFilterLayer3 = field(default_factory=ShadowFilterLayer3)
-    layer_4: ShadowFilterLayer4 = field(default_factory=ShadowFilterLayer4)
-    layer_xena: ShadowFilterLayerXena = field(default_factory=ShadowFilterLayerXena)
-    layer_any: ShadowFilterLayerAny = field(default_factory=ShadowFilterLayerAny)
+class ShadowFilterConfigBasic(BaseModel):
+    layer_2: ShadowFilterLayer2 = ShadowFilterLayer2()
+    layer_2_plus: ShadowFilterLayer2Plus = ShadowFilterLayer2Plus()
+    layer_3: ShadowFilterLayer3 = ShadowFilterLayer3()
+    layer_4: ShadowFilterLayer4 = ShadowFilterLayer4()
+    layer_xena: ShadowFilterLayerXena = ShadowFilterLayerXena()
+    layer_any: ShadowFilterLayerAny = ShadowFilterLayerAny()
 
 
-@dataclass
-class ProtocolSegement:
+class ProtocolSegement(BaseModel):
     protocol_type: enums.ProtocolOption
     value: str
     mask: str
 
 
-@dataclass
-class ShadowFilterConfigExtended:
-    protocol_segments: Tuple[ProtocolSegement, ...] = field(default_factory=tuple)
+class ShadowFilterConfigExtended(BaseModel):
+    protocol_segments: Tuple[ProtocolSegement, ...] = tuple()

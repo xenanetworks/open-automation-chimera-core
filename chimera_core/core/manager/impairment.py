@@ -1,6 +1,5 @@
 import asyncio
 from dataclasses import dataclass
-import itertools
 from typing import (
     TYPE_CHECKING,
     Dict,
@@ -18,16 +17,17 @@ from typing import (
 )
 
 from loguru import logger
+
 from xoa_driver import utils, enums
 from xoa_driver.v2 import misc
 from xoa_driver.lli import commands
-
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import ModeExtendedS
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ProtocolSegment as HLIProtocolSegment
 
+from .const import TPLD_FILTERS_LENGTH
+
 from .dataset import (
-    TPLD_FILTERS_LENGTH,
     ImpairmentConfigCorruption,
     ImpairmentConfigPolicer,
     DistributionResponseValidator,
@@ -120,26 +120,7 @@ class ImpairmentConfiguratorBase(Generic[T]):
         await asyncio.gather(*config.apply(self.impairment))
 
 
-class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
-    async def get(self) -> ImpairmentWithDistribution:
-        enable, schedule = await self._get_enable_and_schedule()
-        distributions = await asyncio.gather(*(
-            self.impairment.distribution.fixed_burst.get(),
-            self.impairment.distribution.random_burst.get(),
-            self.impairment.distribution.fixed_rate.get(),
-            self.impairment.distribution.bit_error_rate.get(),
-            self.impairment.distribution.ge.get(),
-            self.impairment.distribution.uniform.get(),
-            self.impairment.distribution.gaussian.get(),
-            self.impairment.distribution.gamma.get(),
-            self.impairment.distribution.poisson.get(),
-            self.impairment.distribution.custom.get(),
-        ), return_exceptions=True)
 
-        config = ImpairmentWithDistribution(enable=enums.OnOff(enable.action))
-        config.distribution.load_value_from_server_response(DistributionResponseValidator(*distributions))
-        config.distribution.set_schedule(schedule)
-        return config
 
 
 class ImpairmentMisordering(ImpairmentConfiguratorBase[CMisorderingImpairment]):
