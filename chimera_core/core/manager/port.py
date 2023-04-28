@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 
 from loguru import logger
 from xoa_driver import enums
+from xoa_driver import utils
 
 from chimera_core.core.manager.dataset import PortConfig, PortConfigLinkFlap, PortConfigPulseError
 from chimera_core.core.manager.base import ReserveMixin
@@ -55,7 +56,7 @@ class PortConfigurator:
         return config
 
     async def set(self, config: PortConfig) -> None:
-        coroutines = (
+        await utils.apply(*(
             self.port.comment.set(config.comment),
             self.port.pcs_pma.link_flap.enable.set(config.link_flap.enable),
             self.port.pcs_pma.link_flap.params.set(
@@ -74,8 +75,7 @@ class PortConfigurator:
             self.port.emulate.set(config.emulate),
             self.port.emulation.tpld_mode.set(config.tpld_mode),
             self.port.emulation.drop_fcs_errors.set(config.fcs_error_mode),
-        )
-        await asyncio.gather(*coroutines)
+        ))
 
 
 class PortManager(ReserveMixin):
