@@ -11,7 +11,7 @@ from chimera_core.core.manager.tester import TesterManager
 from .core.messenger.handler import OutMessagesHandler
 from .core.resources.manager import ResourcesManager, AllTesterTypes
 from .core import const
-
+from . import exception
 
 if TYPE_CHECKING:
     from .types import EMsgType
@@ -79,9 +79,10 @@ class MainController:
                 debug=debug,
             )[credentials.id]
 
-            assert isinstance(tester_instance, L23Tester), 'Invalid tester.'
+            if not isinstance(tester_instance, L23Tester):
+                raise exception.OnlyAcceptL23TesterError()
             if not any(isinstance(module, ModuleChimera) for module in tester_instance.modules):
-                raise ValueError("The tester do not have chimera module on it.")
+                raise exception.ChimeraModuleNotExistsError()
             self.__testers[username] = tester_instance
 
         manager = TesterManager(tester_instance)
