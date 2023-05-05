@@ -41,6 +41,8 @@ GeneratorToken = Generator[misc.Token, None, None]
 
 @dataclass
 class SupportedDistribution:
+    enable: bool = False
+    schedule: bool = False
     fixed_burst: bool = False
     random_burst: bool = False
     fixed_rate: bool = False
@@ -76,6 +78,7 @@ distribution_class: Dict[str, Type[Any]] = {
     'constant_delay': ConstantDelay,
 }
 
+
 class DistributionResponseValidator(NamedTuple):
     """If get command return NOTVALID, the config was not being set"""
     fixed_burst: TypeTokenResponseOrError = None
@@ -103,7 +106,6 @@ class DistributionResponseValidator(NamedTuple):
                 yield command_name, command_response
 
 
-@dataclass
 class ImpairmentConfigBase:
     enable: enums.OnOff = enums.OnOff.OFF
 
@@ -160,18 +162,6 @@ class DistributionManager:
     def set_distribution(self, distribution: "DistributionConfigBase") -> None:
         self._current = distribution
 
-    def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
-        for distribution_name, distribution_response in validator.filter_valid_distribution:
-            distribution_config = distribution_class[distribution_name]()
-            distribution_config.load_server_value(distribution_response)
-            self.set_distribution(distribution_config)
-
-    def set_schedule(self, schedule_respsonse: Any) -> None:
-        if (distribution := self.get_current_distribution()) \
-            and isinstance(distribution, DistributionWithNonBurstSchedule) \
-                and not isinstance(schedule_respsonse, Exception):
-            distribution.schedule.duration = schedule_respsonse.duration
-            distribution.schedule.period = schedule_respsonse.period
 
     def apply(self, impairment: TImpairment) -> GeneratorToken:
         assert self._current
@@ -180,7 +170,31 @@ class DistributionManager:
 
 @dataclass
 class ImpairmentWithDistribution(ImpairmentConfigBase):
+    supported_distribution: SupportedDistribution
+    supported_distribution_class: Tuple[str, ...]
     distribution: DistributionManager = field(default_factory=DistributionManager)
+
 
     def apply(self, impairment: TImpairment) -> GeneratorToken:
         yield from self.distribution.apply(impairment)
+
+    def set_schedule(self, schedule_respsonse: Any) -> None:
+        if (distribution := self.distribution.get_current_distribution()) \
+            and isinstance(distribution, DistributionWithNonBurstSchedule):
+            distribution.schedule.duration = schedule_respsonse.duration
+            distribution.schedule.period = schedule_respsonse.period
+
+    def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
+        for distribution_name, distribution_response in validator.filter_valid_distribution:
+            if distribution_name == 'enable':
+                self.enable = enums.OnOff(distribution_response.action)
+            elif distribution_name == 'schedule':
+                self.set_schedule(distribution_response)
+            else:
+                distribution_config = distribution_class[distribution_name]()
+                distribution_config.load_server_value(distribution_response)
+                self.distribution.set_distribution(distribution_config)
+
+    def set_distribution(self, distribution: Type["DistributionConfigBase"]) -> None:
+        logger.debug(distribution.__class__.__name__)
+        logger.debug(distribution.__class__.__name__ in self.supported_distribution_class)

@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class FlowManager:
-    def __init__(self, flow: "CFlow"):
+    def __init__(self, flow: "CFlow") -> None:
         self.flow = flow
         self.shadow_filter = ShadowFilterManager(flow.shadow_filter)
         self.drop = ImpairmentDrop(flow.drop)

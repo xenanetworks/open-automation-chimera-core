@@ -35,9 +35,9 @@ class ImpairmentConfiguratorBase(Generic[T]):
     def __init__(self, impairment: T):
         self.impairment = impairment
         self.config: Optional[Any] = None
-        self.post_init()
+        self.init_supported_distribution()
 
-    def post_init(self) -> None:
+    def init_supported_distribution(self) -> None:
         pass
 
     def get_all_distribution_commands(self) -> Dict[str, Token]:

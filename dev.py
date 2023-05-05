@@ -5,6 +5,7 @@ from xoa_driver import enums
 
 from chimera_core import controller, types
 from chimera_core.core.manager.dataset import FixedBurst, ProtocolSegement, ConstantDelay
+from chimera_core.core.manager.distributions.drop import FixedBurst
 
 
 TESTER_IP_ADDRESS = '127.0.0.1'
@@ -69,32 +70,28 @@ async def main():
     )
     config.protocol_segments = (ethernet,ipv41,ipv42)
 
-    await extend_filter_mode.set(config)
-    config = await extend_filter_mode.get()
-    logger.debug(config)
+    # await extend_filter_mode.set(config)
+    # config = await extend_filter_mode.get()
+    # logger.debug(config)
 
+    # basic_filter_mode = await flow.shadow_filter.use_basic_mode()  # or use_extend_mode()
+    # current_filter_config = await basic_filter_mode.get()
+    # logger.debug(current_filter_config)
 
-    basic_filter_mode = await flow.shadow_filter.use_basic_mode()  # or use_extend_mode()
-    current_filter_config = await basic_filter_mode.get()
-    logger.debug(current_filter_config)
-
-    ipv4 = current_filter_config.layer_3.use_ipv4()
-    ipv4.dest_addr.on(address='8.8.8.8', mask='FFFF')
-    ipv4.include()
-    await basic_filter_mode.set(current_filter_config)
+    # ipv4 = current_filter_config.layer_3.use_ipv4()
+    # ipv4.dest_addr.on(address='8.8.8.8', mask='FFFF')
+    # ipv4.include()
+    # await basic_filter_mode.set(current_filter_config)
 
     drop_config = await flow.drop.get()
-    distribution = drop_config.distribution.get_current_distribution()
-
-    if isinstance(distribution, FixedBurst):
-        distribution.repeat(period=1)
 
     logger.debug(drop_config)
     fixed_burst = FixedBurst()
     fixed_burst.repeat(period=2)
-    drop_config.distribution.set_distribution(fixed_burst)
-    await flow.drop.set(drop_config)
-    await flow.drop.stop()
+    drop_config.set_distribution(fixed_burst)
+    return
+    # await flow.drop.set(drop_config)
+    # await flow.drop.stop()
 
     # fixed_burst = FixedBurst()
     # fixed_burst.one_shot()
