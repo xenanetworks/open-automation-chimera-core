@@ -40,8 +40,7 @@ GeneratorToken = Generator[misc.Token, None, None]
 
 
 @dataclass
-class SupportedDistribution:
-    enable: bool = False
+class ReadDistributionsFromServer:
     schedule: bool = False
     fixed_burst: bool = False
     random_burst: bool = False
@@ -95,6 +94,8 @@ class DistributionResponseValidator(NamedTuple):
     accumulate_and_burst: TypeTokenResponseOrError = None
     constant_delay: TypeTokenResponseOrError = None
     step: TypeTokenResponseOrError = None
+    enable: TypeTokenResponseOrError = None
+    schedule: TypeTokenResponseOrError = None
 
     @property
     def filter_valid_distribution(self) -> Generator[Tuple[str, Any], None, None]:
@@ -150,36 +151,22 @@ class DistributionWithNonBurstSchedule(DistributionConfigBase):
         yield from self.schedule.apply(impairment)
 
 
-
-
-@dataclass
-class DistributionManager:
-    _current: Optional[DistributionConfigBase] = None
-
-    def get_current_distribution(self) -> Optional["DistributionConfigBase"]:
-        return self._current
-
-    def set_distribution(self, distribution: "DistributionConfigBase") -> None:
-        self._current = distribution
-
-
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
-        assert self._current
-        yield from self._current.apply(impairment)
-
-
 @dataclass
 class ImpairmentWithDistribution(ImpairmentConfigBase):
-    supported_distribution: SupportedDistribution
-    supported_distribution_class: Tuple[str, ...]
-    distribution: DistributionManager = field(default_factory=DistributionManager)
+    read_distributions_from_server: ReadDistributionsFromServer
+    allow_set_distribution_class_name: Tuple[str, ...]
+    _current_distribution: Optional[DistributionConfigBase] = None
 
 
     def apply(self, impairment: TImpairment) -> GeneratorToken:
-        yield from self.distribution.apply(impairment)
+        if self._current_distribution:
+            yield from self._current_distribution.apply(impairment)
+
+    def get_current_distribution(self) -> Optional[DistributionConfigBase]:
+        return self._current_distribution
 
     def set_schedule(self, schedule_respsonse: Any) -> None:
-        if (distribution := self.distribution.get_current_distribution()) \
+        if (distribution := self.get_current_distribution()) \
             and isinstance(distribution, DistributionWithNonBurstSchedule):
             distribution.schedule.duration = schedule_respsonse.duration
             distribution.schedule.period = schedule_respsonse.period
@@ -193,8 +180,9 @@ class ImpairmentWithDistribution(ImpairmentConfigBase):
             else:
                 distribution_config = distribution_class[distribution_name]()
                 distribution_config.load_server_value(distribution_response)
-                self.distribution.set_distribution(distribution_config)
+                self.set_distribution(distribution_config)
 
-    def set_distribution(self, distribution: Type["DistributionConfigBase"]) -> None:
+    def set_distribution(self, distribution: DistributionConfigBase) -> None:
         logger.debug(distribution.__class__.__name__)
-        logger.debug(distribution.__class__.__name__ in self.supported_distribution_class)
+        logger.debug(distribution.__class__.__name__ in self.allow_set_distribution_class_name)
+        self._current_distribution = distribution

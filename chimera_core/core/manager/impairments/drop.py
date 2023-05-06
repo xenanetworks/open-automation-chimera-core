@@ -14,14 +14,14 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
 )
 
 
-from .base import ImpairmentConfiguratorBase
-from .dataset import ImpairmentWithDistribution, DistributionResponseValidator, SupportedDistribution
-from chimera_core.core.manager.distributions.drop import __all__ as DD
+from .base import ImpairmentWithDistributionConfigurator
+from .dataset import ReadDistributionsFromServer
+from chimera_core.core.manager.distributions.drop import __all__ as allow_set_distribution_class_name
 
 
-class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
-    def init_supported_distribution(self) -> None:
-        self.supported_distribution = SupportedDistribution(
+class ImpairmentDrop(ImpairmentWithDistributionConfigurator[CDropImpairment]):
+    def setup_supported_distribution(self) -> None:
+        self.read_distributions_from_server = ReadDistributionsFromServer(
             fixed_burst=True,
             random_burst=True,
             fixed_rate=True,
@@ -33,15 +33,4 @@ class ImpairmentDrop(ImpairmentConfiguratorBase[CDropImpairment]):
             poisson=True,
             custom=True,
         )
-        self.supported_distribution_class = DD
-
-    async def get(self) -> ImpairmentWithDistribution:
-        command_tokens = self.get_all_distribution_commands()
-        results = await asyncio.gather(*command_tokens.values(), return_exceptions=True)
-        distributions = dict(zip(command_tokens.keys(), results))
-        config = ImpairmentWithDistribution(
-            supported_distribution=self.supported_distribution,
-            supported_distribution_class=DD,
-        )
-        config.load_value_from_server_response(DistributionResponseValidator(**distributions))
-        return config
+        self.allow_set_distribution_class_name = allow_set_distribution_class_name

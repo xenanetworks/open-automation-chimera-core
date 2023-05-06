@@ -26,26 +26,16 @@ T = TypeVar(
     CShaperImpairment,
 )
 
-from .dataset import SupportedDistribution
+from .dataset import ReadDistributionsFromServer, ImpairmentWithDistribution, DistributionResponseValidator
+
+from loguru import logger
 
 
 class ImpairmentConfiguratorBase(Generic[T]):
-    supported_distribution = SupportedDistribution
-
     def __init__(self, impairment: T):
         self.impairment = impairment
         self.config: Optional[Any] = None
-        self.init_supported_distribution()
 
-    def init_supported_distribution(self) -> None:
-        pass
-
-    def get_all_distribution_commands(self) -> Dict[str, Token]:
-        result = {}
-        for distribution in self.supported_distribution:
-            if (is_supported := getattr(self.supported_distribution, distribution.name)):
-                result[distribution.name] = getattr(self.impairment.distribution, distribution.name).get()
-        return result
 
 
     async def start(self, config: Optional[Any] = None) -> None:
@@ -62,13 +52,49 @@ class ImpairmentConfiguratorBase(Generic[T]):
         assert config, "Config not exists"
         await asyncio.gather(*config.start(self.impairment) if state else config.stop())
 
-    async def _get_enable_and_schedule(self) -> Tuple[commands.PED_ENABLE.GetDataAttr, commands.PED_SCHEDULE.GetDataAttr]:
-        assert not isinstance(self.impairment, (CPolicerImpairment, CShaperImpairment))
-        enable, schedule = await asyncio.gather(*(
-            self.impairment.enable.get(),
-            self.impairment.schedule.get(),
-        ))
-        return enable, schedule
-
     async def set(self, config: "ImpairmentWithDistribution") -> None:
         await asyncio.gather(*config.apply(self.impairment))
+
+
+
+TImpairmentWithDistribution = TypeVar(
+    'TImpairmentWithDistribution',
+    CLatencyJitterImpairment,
+    CDropImpairment,
+    CMisorderingImpairment,
+    CLatencyJitterImpairment,
+    CDuplicationImpairment,
+)
+
+class ImpairmentWithDistributionConfigurator(ImpairmentConfiguratorBase[TImpairmentWithDistribution]):
+    read_distributions_from_server: ReadDistributionsFromServer
+    allow_set_distribution_class_name: Tuple[str, ...]
+
+    def __init__(self, impairment: TImpairmentWithDistribution) -> None:
+        super().__init__(impairment)
+        self.setup_supported_distribution()
+
+    def setup_supported_distribution(self) -> None:
+        pass
+
+    def get_all_distribution_commands(self) -> Dict[str, Token]:
+        result = {}
+        for distribution in self.read_distributions_from_server:
+            logger.debug(distribution)
+            if (is_supported := getattr(self.read_distributions_from_server, distribution.name)):
+                result[distribution.name] = getattr(self.impairment.distribution, distribution.name).get()
+
+        result['enable'] = self.impairment.enable.get()
+        result['enable'] = self.impairment.schedule.get()
+        return result
+
+    async def get(self) -> ImpairmentWithDistribution:
+        command_tokens = self.get_all_distribution_commands()
+        results = await asyncio.gather(*command_tokens.values(), return_exceptions=True)
+        distributions = dict(zip(command_tokens.keys(), results))
+        config = ImpairmentWithDistribution(
+            read_distributions_from_server=self.read_distributions_from_server,
+            allow_set_distribution_class_name=self.allow_set_distribution_class_name,
+        )
+        config.load_value_from_server_response(DistributionResponseValidator(**distributions))
+        return config
