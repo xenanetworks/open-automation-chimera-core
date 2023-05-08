@@ -28,6 +28,7 @@ from chimera_core.core.manager.distributions.__dataset import (
     AccumulateBurst,
     ConstantDelay,
 )
+from chimera_core.core.manager.exception import InvalidDistributionError
 
 TImpairment = Union[
     CDropImpairment,
@@ -40,7 +41,7 @@ GeneratorToken = Generator[misc.Token, None, None]
 
 
 @dataclass
-class ReadDistributionsFromServer:
+class BatchReadDistributionConfigFromServer:
     schedule: bool = False
     fixed_burst: bool = False
     random_burst: bool = False
@@ -153,7 +154,7 @@ class DistributionWithNonBurstSchedule(DistributionConfigBase):
 
 @dataclass
 class ImpairmentWithDistribution(ImpairmentConfigBase):
-    read_distributions_from_server: ReadDistributionsFromServer
+    read_distribution_config_from_server: BatchReadDistributionConfigFromServer
     allow_set_distribution_class_name: Tuple[str, ...]
     _current_distribution: Optional[DistributionConfigBase] = None
 
@@ -184,5 +185,6 @@ class ImpairmentWithDistribution(ImpairmentConfigBase):
 
     def set_distribution(self, distribution: DistributionConfigBase) -> None:
         logger.debug(distribution.__class__.__name__)
-        logger.debug(distribution.__class__.__name__ in self.allow_set_distribution_class_name)
+        if distribution.__class__.__name__ not in self.allow_set_distribution_class_name:
+            raise InvalidDistributionError(self.allow_set_distribution_class_name)
         self._current_distribution = distribution

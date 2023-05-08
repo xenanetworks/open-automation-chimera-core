@@ -144,6 +144,16 @@ class DistributionWithNonBurstSchedule(DistributionConfigBase):
 
 
 @dataclass
+class Step(DistributionWithBurstSchedule):
+    low: int = 0
+    high: int = 0
+
+    def apply(self, impairment: TImpairment) -> GeneratorToken:
+        yield impairment.distribution.step.set(low=self.low, high=self.high)
+        yield from super().apply(impairment)
+
+
+@dataclass
 class FixedBurst(DistributionWithBurstSchedule):
     burst_size: int = 0
 
