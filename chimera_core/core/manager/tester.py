@@ -5,7 +5,7 @@ from xoa_driver.v2.modules import ModuleChimera
 from xoa_driver.v2.ports import PortChimera
 from xoa_driver.v2.testers import L23Tester
 
-from chimera_core.core.manager.base import ReserveMixin
+from chimera_core.core.manager.__base import ReserveMixin
 from .module import ModuleManager
 from .port import PortManager
 from .exception import InvalidChimeraResourceError

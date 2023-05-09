@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Generator, List, Optional
 from loguru import logger
 from xoa_driver import enums
 
-from chimera_core.core.manager.base import ReserveMixin
+from chimera_core.core.manager.__base import ReserveMixin
 from .__dataset import ModuleConfig
 
 if TYPE_CHECKING:
