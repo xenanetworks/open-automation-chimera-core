@@ -1,15 +1,14 @@
 from dataclasses import dataclass
 from typing import List, TYPE_CHECKING
 
-from chimera_core.core.manager.impairments.drop import ImpairmentDrop
-from chimera_core.core.manager.impairments.duplication import ImpairmentDuplication
-from chimera_core.core.manager.impairments.corruption import ImpairmentCorruption
-from chimera_core.core.manager.impairments.latency_jitter import ImpairmentLatencyJitter
-from chimera_core.core.manager.impairments.misordering import ImpairmentMisordering
-from chimera_core.core.manager.impairments.policer import ImpairmentPolicer
-from chimera_core.core.manager.impairments.shaper import ImpairmentShaper
-
-from chimera_core.core.manager.impairment import ShadowFilterManager
+from .impairments.drop import ImpairmentDrop
+from .impairments.duplication import ImpairmentDuplication
+from .impairments.corruption import ImpairmentCorruption
+from .impairments.latency_jitter import ImpairmentLatencyJitter
+from .impairments.misordering import ImpairmentMisordering
+from .impairments.policer import ImpairmentPolicer
+from .impairments.shaper import ImpairmentShaper
+from .shadow_filter import ShadowFilterManager
 
 
 if TYPE_CHECKING:

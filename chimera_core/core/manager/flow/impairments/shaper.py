@@ -4,8 +4,8 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CShaperImpairment,
 )
 
-from .base import ImpairmentConfiguratorBase
-from ..dataset import ImpairmentConfigPolicer
+from .__base import ImpairmentConfiguratorBase
+from .__dataset import ImpairmentConfigPolicer
 
 
 class ImpairmentShaper(ImpairmentConfiguratorBase[CShaperImpairment]):

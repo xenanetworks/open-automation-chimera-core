@@ -4,8 +4,7 @@ from loguru import logger
 from xoa_driver import enums
 
 from chimera_core import controller, types
-from chimera_core.core.manager.dataset import FixedBurst, ProtocolSegement, ConstantDelay
-from chimera_core.core.manager.distributions.drop import FixedBurst
+from chimera_core.core.manager.flow.distributions.drop import FixedBurst
 
 
 TESTER_IP_ADDRESS = '127.0.0.1'

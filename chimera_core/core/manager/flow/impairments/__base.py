@@ -1,7 +1,6 @@
 import asyncio
 import importlib
-from dataclasses import fields
-from typing import Any, Dict, Generic, Optional, Tuple, TypeVar
+from typing import Any, Dict, Generic, Optional, Tuple, TypeVar, TYPE_CHECKING
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CDropImpairment,
@@ -13,7 +12,9 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CShaperImpairment,
 )
 from xoa_driver.v2.misc import Token
-from xoa_driver.lli import commands
+
+if TYPE_CHECKING:
+    from .__dataset import ImpairmentConfigBase
 
 T = TypeVar(
     'T',
@@ -27,17 +28,13 @@ T = TypeVar(
     CShaperImpairment,
 )
 
-from .dataset import BatchReadDistributionConfigFromServer, ImpairmentWithDistribution, DistributionResponseValidator
-
-from loguru import logger
+from .__dataset import BatchReadDistributionConfigFromServer, ImpairmentWithDistributionConfig, DistributionResponseValidator
 
 
 class ImpairmentConfiguratorBase(Generic[T]):
     def __init__(self, impairment: T):
         self.impairment = impairment
         self.config: Optional[Any] = None
-
-
 
     async def start(self, config: Optional[Any] = None) -> None:
         await self.toggle(True, config)
@@ -53,7 +50,7 @@ class ImpairmentConfiguratorBase(Generic[T]):
         assert config, "Config not exists"
         await asyncio.gather(*config.start(self.impairment) if state else config.stop())
 
-    async def set(self, config: "ImpairmentWithDistribution") -> None:
+    async def set(self, config: "ImpairmentConfigBase") -> None:
         await asyncio.gather(*config.apply(self.impairment))
 
 
@@ -82,7 +79,7 @@ class ImpairmentWithDistributionConfigurator(ImpairmentConfiguratorBase[TImpairm
     def load_allow_set_class_name(self, impairment_name: str) -> Tuple[str, ...]:
         return importlib.import_module(name=f'chimera_core.core.manager.distributions.{impairment_name}').__all__
 
-    def get_all_distribution_commands(self) -> Dict[str, Token]:
+    def batch_read_distribution_config_commands(self) -> Dict[str, Token]:
         result = {}
         for distribution in self.read_distribution_config_from_server:
             if (is_supported := getattr(self.read_distribution_config_from_server, distribution.name)):
@@ -92,13 +89,13 @@ class ImpairmentWithDistributionConfigurator(ImpairmentConfiguratorBase[TImpairm
         result['schedule'] = self.impairment.schedule.get()
         return result
 
-    async def get(self) -> ImpairmentWithDistribution:
-        command_tokens = self.get_all_distribution_commands()
-        results = await asyncio.gather(*command_tokens.values(), return_exceptions=True)
-        distributions = dict(zip(command_tokens.keys(), results))
-        config = ImpairmentWithDistribution(
+    async def get(self) -> ImpairmentWithDistributionConfig:
+        command_tokens = self.batch_read_distribution_config_commands()
+        command_response = await asyncio.gather(*command_tokens.values(), return_exceptions=True)
+        response_mapping = dict(zip(command_tokens.keys(), command_response))
+        config = ImpairmentWithDistributionConfig(
             read_distribution_config_from_server=self.read_distribution_config_from_server,
             allow_set_distribution_class_name=self.allow_set_distribution_class_name,
         )
-        config.load_value_from_server_response(DistributionResponseValidator(**distributions))
+        config.load_value_from_server_response(DistributionResponseValidator(**response_mapping))
         return config

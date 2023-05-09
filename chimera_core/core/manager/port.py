@@ -4,12 +4,11 @@ from typing import Generator, List, TYPE_CHECKING
 if TYPE_CHECKING:
     from xoa_driver.v2.ports import PortChimera
 
-from loguru import logger
 from xoa_driver import enums
 from xoa_driver import utils
 
-from chimera_core.core.manager.dataset import PortConfig, PortConfigLinkFlap, PortConfigPulseError
-from chimera_core.core.manager.base import ReserveMixin
+from chimera_core.core.manager.__dataset import PortConfig, PortConfigLinkFlap, PortConfigPulseError
+from chimera_core.core.manager.__base import ReserveMixin
 from chimera_core.core.manager.flow import FlowManager, FlowManagerContainer
 
 

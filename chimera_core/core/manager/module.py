@@ -5,7 +5,7 @@ from loguru import logger
 from xoa_driver import enums
 
 from chimera_core.core.manager.base import ReserveMixin
-from .dataset import ModuleConfig
+from .__dataset import ModuleConfig
 
 if TYPE_CHECKING:
     from xoa_driver.v2.modules import ModuleChimera

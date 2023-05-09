@@ -1,120 +1,36 @@
 import asyncio
-from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    Dict,
-    Generator,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    Protocol,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    Any,
-)
 
-from loguru import logger
-
-from xoa_driver import utils, enums
-from xoa_driver.v2 import misc
-from xoa_driver.lli import commands
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import ModeExtendedS
+from xoa_driver import enums, utils
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ProtocolSegment as HLIProtocolSegment
 
-from .const import TPLD_FILTERS_LENGTH
 
-from .dataset import (
-    InnerOuter,
-    ProtocolSegement,
-    ShadowFilterConfigAnyField,
+from .__dataset import (
+    TPLD_FILTERS_LENGTH,
+    generate_inner_outer,
     ShadowFilterConfigBasic,
     ShadowFilterConfigEthernet,
     ShadowFilterConfigEthernetAddr,
-    ShadowFilterConfigExtended,
-    ShadowFilterConfigL2IPv4DSCP,
-    ShadowFilterConfigL3IPv4,
-    ShadowFilterConfigL2IPv4Addr,
-    ShadowFilterConfigBasicIPv6DESTADDR,
-    ShadowFilterConfigL3IPv6,
-    ShadowFilterConfigBasicIPv6SRCADDR,
-    ShadowFilterConfigL2MPLS,
     ShadowFilterConfigL2VLAN,
+    ShadowFilterConfigL2MPLS,
+    ShadowFilterConfigL3IPv4,
+    ShadowFilterConfigL3IPv6,
+    ShadowFilterConfigL2IPv4Addr,
+    ShadowFilterConfigL2IPv4DSCP,
+    ShadowFilterConfigBasicIPv6DESTADDR,
+    ShadowFilterConfigBasicIPv6SRCADDR,
     ShadowFilterConfigL4TCP,
-    ShadowFilterConfigTPLD,
-    ShadowFilterConfigTPLDID,
-    ShadowFilterLayer2,
     ShadowFilterLayer2Plus,
+    ShadowFilterLayer2,
     ShadowFilterLayer3,
     ShadowFilterLayer4,
     ShadowFilterLayerAny,
     ShadowFilterLayerXena,
+    ShadowFilterConfigTPLD,
+    ShadowFilterConfigTPLDID,
+    ShadowFilterConfigAnyField,
+
 )
-
-
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
-
-
-class PDistributionApply(Protocol):
-    def apply(self, impairment: Any) -> Generator[misc.Token, None, None]:
-        ...
-
-
-class PInnerOuterGetDataAttr(Protocol):
-    use: Any
-    value: int
-    mask: str
-
-
-def generate_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
-    return InnerOuter(use=enums.OnOff(attr.use), value=attr.value, mask=attr.mask.replace('0x', ''))
-
-
-class ShadowFilterConfiguratorExtended:
-    def __init__(self, filter_: "FilterDefinitionShadow", extended_mode: "ModeExtendedS") -> None:
-        self.shadow_filter = filter_
-        self.extended_mode = extended_mode
-
-    async def get_single_protocol_segment_content(self, protocol_segment: HLIProtocolSegment) -> ProtocolSegement:
-        value, mask = await utils.apply(
-            protocol_segment.value.get(),
-            protocol_segment.mask.get(),
-        )
-        value = ''.join(h.replace('0x', '') for h in value.value)
-        mask = ''.join(h.replace('0x', '') for h in mask.masks)
-        return ProtocolSegement(
-            protocol_type=protocol_segment.segment_type,
-            value=value,
-            mask=mask,
-        )
-
-    async def set_single_protocol_segment_content(self, protocol_segment: HLIProtocolSegment, value: str, mask: str) -> None:
-        await utils.apply(
-            protocol_segment.value.set(value),
-            protocol_segment.mask.set(mask),
-        )
-
-    async def get(self) -> ShadowFilterConfigExtended:
-        protocol_types = await self.extended_mode.get_protocol_segments()
-        segments = await asyncio.gather(*(
-            self.get_single_protocol_segment_content(protocol_segment=proto) for proto in protocol_types
-        ))
-        return ShadowFilterConfigExtended(protocol_segments=tuple(segments))
-
-    async def set(self, config: ShadowFilterConfigExtended) -> None:
-        await self.extended_mode.use_segments(*(proto.protocol_type for proto in config.protocol_segments[1:]))
-        protocol_types = await self.extended_mode.get_protocol_segments()
-        await asyncio.gather(*(
-            self.set_single_protocol_segment_content(
-                protocol_segment=proto,
-                value=config.protocol_segments[idx].value,
-                mask=config.protocol_segments[idx].mask,
-            )
-                for idx, proto in enumerate(protocol_types)
-        ))
 
 
 class ShadowFilterConfiguratorBasic:
@@ -167,7 +83,6 @@ class ShadowFilterConfiguratorBasic:
 
             ), return_exceptions=True)
 
-        logger.warning(values)
 
         config_ethernet = ShadowFilterConfigEthernet(
             filter_use=enums.FilterUse(ethernet.use),
@@ -363,7 +278,6 @@ class ShadowFilterConfiguratorBasic:
             ])
 
         if not config.layer_4.tcp.is_off:
-            logger.debug(config.layer_4.tcp)
             coroutines.extend([
                 self.basic_mode.tcp.settings.set(use=config.layer_4.tcp.filter_use, action=config.layer_4.tcp.match_action),
                 self.basic_mode.tcp.src_port.set(
@@ -394,7 +308,7 @@ class ShadowFilterConfiguratorBasic:
 
         if not config.layer_xena.tpld.is_off:
             coroutines.extend([
-                self.basic_mode.tpld.settings.set(use=config.layer_xena.tpld.filter_use, action=config.layer_xena.tpld.match_action),
+                self.basic_mode.tpld.settings.set(action=config.layer_xena.tpld.match_action),
                 *(
                     tpld_filter.set(use=config.layer_xena.tpld.configs[i].use, id=config.layer_xena.tpld.configs[i].tpld_id)
                     for i, tpld_filter in enumerate(self.basic_mode.tpld.test_payload_filters_config)
@@ -413,28 +327,3 @@ class ShadowFilterConfiguratorBasic:
 
         # await asyncio.gather(*coroutines)
         await utils.apply(*coroutines)
-
-
-class ShadowFilterManager:
-    def __init__(self, filter: "FilterDefinitionShadow"):
-        self.filter = filter
-
-    async def reset(self) -> None:
-        await self.filter.initiating.set()
-
-    async def use_basic_mode(self) -> "ShadowFilterConfiguratorBasic":
-        await self.filter.use_basic_mode()
-        mode = await self.filter.get_mode()
-        assert isinstance(mode, ModeBasic), "Not base mode"
-        return ShadowFilterConfiguratorBasic(self.filter, mode)
-
-    async def use_extended_mode(self) -> "ShadowFilterConfiguratorExtended":
-        await self.filter.use_extended_mode()
-        mode = await self.filter.get_mode()
-        assert isinstance(mode, ModeExtendedS), "Not extended mode"
-        return ShadowFilterConfiguratorExtended(self.filter, mode)
-
-    async def enable(self, state: bool) -> None:
-        await self.filter.enable.set(enums.OnOff(state))
-        if state:
-            await self.filter.apply.set()

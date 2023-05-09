@@ -3,8 +3,8 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
 )
 
 
-from .base import ImpairmentWithDistributionConfigurator
-from .dataset import BatchReadDistributionConfigFromServer
+from .__base import ImpairmentWithDistributionConfigurator
+from .__dataset import BatchReadDistributionConfigFromServer
 
 
 class ImpairmentMisordering(ImpairmentWithDistributionConfigurator[CMisorderingImpairment]):

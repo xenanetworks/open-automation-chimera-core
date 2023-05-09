@@ -1,6 +1,6 @@
 from collections import namedtuple
 from dataclasses import dataclass, field, fields
-from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union
 
 from loguru import logger
 
@@ -11,9 +11,12 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CDropImpairment,
     CMisorderingImpairment,
     CShaperImpairment,
+    CDuplicationImpairment,
+    CPolicerImpairment,
+    CCorruptionImpairment,
 )
 
-from chimera_core.core.manager.distributions.__dataset import (
+from chimera_core.core.manager.flow.distributions.__dataset import (
     FixedBurst,
     RandomBurst,
     FixedRate,
@@ -31,10 +34,26 @@ from chimera_core.core.manager.distributions.__dataset import (
 from chimera_core.core.manager.exception import InvalidDistributionError
 
 TImpairment = Union[
-    CDropImpairment,
     CLatencyJitterImpairment,
+    CDropImpairment,
     CMisorderingImpairment,
+    CDuplicationImpairment,
+    CCorruptionImpairment,
+    CMisorderingImpairment,
+    CShaperImpairment,
+    CPolicerImpairment,
 ]
+
+TImpairmentWithDistribution = TypeVar(
+    'TImpairmentWithDistribution',
+    CLatencyJitterImpairment,
+    CDropImpairment,
+    CMisorderingImpairment,
+    CLatencyJitterImpairment,
+    CDuplicationImpairment,
+    CCorruptionImpairment,
+)
+
 
 TypeTokenResponseOrError = Union[Exception, Any]
 GeneratorToken = Generator[misc.Token, None, None]
@@ -111,6 +130,8 @@ class DistributionResponseValidator(NamedTuple):
 class ImpairmentConfigBase:
     enable: enums.OnOff = enums.OnOff.OFF
 
+    def apply(self, impairment: TImpairment) -> GeneratorToken:
+        raise NotImplementedError
 
 @dataclass
 class DistributionConfigBase:
@@ -132,7 +153,7 @@ class Schedule:
     duration: int = 0
     period: int = 0
 
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
+    def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         yield impairment.schedule.set(duration=self.duration, period=self.period)
 
 
@@ -148,18 +169,18 @@ class DistributionWithNonBurstSchedule(DistributionConfigBase):
         self.duration = duration
         self.period = period
 
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
+    def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         yield from self.schedule.apply(impairment)
 
 
 @dataclass
-class ImpairmentWithDistribution(ImpairmentConfigBase):
+class ImpairmentWithDistributionConfig(ImpairmentConfigBase):
     read_distribution_config_from_server: BatchReadDistributionConfigFromServer
     allow_set_distribution_class_name: Tuple[str, ...]
     _current_distribution: Optional[DistributionConfigBase] = None
 
 
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
+    def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         if self._current_distribution:
             yield from self._current_distribution.apply(impairment)
 
@@ -188,3 +209,38 @@ class ImpairmentWithDistribution(ImpairmentConfigBase):
         if distribution.__class__.__name__ not in self.allow_set_distribution_class_name:
             raise InvalidDistributionError(self.allow_set_distribution_class_name)
         self._current_distribution = distribution
+
+@dataclass
+class ImpairmentConfigPolicer:
+    on_off: enums.OnOff = enums.OnOff.OFF
+    mode: enums.PolicerMode = enums.PolicerMode.L2
+    cir: int = 0
+    cbs: int = 0
+
+
+@dataclass
+class ImpairmentConfigShaper:
+    on_off: enums.OnOff = enums.OnOff.OFF
+    mode: enums.PolicerMode = enums.PolicerMode.L2
+    cir: int = 0
+    cbs: int = 0
+    buffer_size: int = 0
+
+    async def set(self, impairment: CShaperImpairment) -> None:
+        impairment.config.set(
+            on_off=self.on_off,
+            mode=self.mode,
+            cir=self.cir,
+            cbs=self.cbs,
+            buffer_size=self.buffer_size,
+        )
+
+
+    def start(self, impairment: CShaperImpairment) -> GeneratorToken:
+        yield impairment.config.set(
+            on_off=enums.OnOff.ON,
+            mode=self.mode,
+            cir=self.cir,
+            cbs=self.cbs,
+            buffer_size=self.buffer_size,
+        )
