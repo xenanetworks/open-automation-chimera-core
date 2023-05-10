@@ -5,7 +5,6 @@ from enum import Enum
 from functools import partial, partialmethod
 from loguru import logger
 
-from pydantic import BaseModel
 from xoa_driver import enums
 from xoa_driver.v2 import misc
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
@@ -21,7 +20,7 @@ TPLD_FILTERS_LENGTH = 16
 
 GeneratorToken = Generator[misc.Token, None, None]
 
-class PortConfigPcsPmaBase(BaseModel):
+class PortConfigPcsPmaBase:
     enable: enums.OnOff = enums.OnOff.OFF
     duration: int = 100
     period: int = 10000
@@ -55,7 +54,8 @@ class PortConfig:
     set_emulate_off = partialmethod(set_emulate, enums.OnOff.OFF)
 
 
-class ModuleConfig(BaseModel):
+@dataclass
+class ModuleConfig:
     comment: str = ''
     timing_source: enums.TimingSource = enums.TimingSource.CHASSIS
     clock_ppb: int = 1
