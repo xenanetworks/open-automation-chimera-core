@@ -1,8 +1,5 @@
-from collections import namedtuple
 from dataclasses import dataclass, field, fields
 from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union
-
-from loguru import logger
 
 from xoa_driver import enums
 from xoa_driver.v2 import misc
@@ -30,6 +27,8 @@ from chimera_core.core.manager.flow.distributions.__dataset import (
     Custom,
     AccumulateBurst,
     ConstantDelay,
+    DistributionConfigBase,
+    TImpairmentWithDistribution,
 )
 from chimera_core.core.manager.exception import InvalidDistributionError
 
@@ -43,17 +42,6 @@ TImpairment = Union[
     CShaperImpairment,
     CPolicerImpairment,
 ]
-
-TImpairmentWithDistribution = TypeVar(
-    'TImpairmentWithDistribution',
-    CLatencyJitterImpairment,
-    CDropImpairment,
-    CMisorderingImpairment,
-    CLatencyJitterImpairment,
-    CDuplicationImpairment,
-    CCorruptionImpairment,
-)
-
 
 TypeTokenResponseOrError = Union[Exception, Any]
 GeneratorToken = Generator[misc.Token, None, None]
@@ -81,23 +69,6 @@ class BatchReadDistributionConfigFromServer:
         return iter(fields(self))
 
 
-distribution_class: Dict[str, Type[Any]] = {
-    'fixed_burst': FixedBurst,
-    'random_burst': RandomBurst,
-    'fixed_rate': FixedRate,
-    'random_rate': RandomRate,
-    'bit_error_rate': BitErrorRate,
-    'ge': GilbertElliot,
-    'uniform': Uniform,
-    'gaussian': Gaussian,
-    'poisson': Poisson,
-    'gamma': Gamma,
-    'custom': Custom,
-    'accumulate_and_burst': AccumulateBurst,
-    'constant_delay': ConstantDelay,
-}
-
-
 class DistributionResponseValidator(NamedTuple):
     """If get command return NOTVALID, the config was not being set"""
     fixed_burst: TypeTokenResponseOrError = None
@@ -118,12 +89,10 @@ class DistributionResponseValidator(NamedTuple):
     schedule: TypeTokenResponseOrError = None
 
     @property
-    def filter_valid_distribution(self) -> Generator[Tuple[str, Any], None, None]:
+    def filter_set_distribution(self) -> Generator[Tuple[str, Any], None, None]:
         """if token respsonse is not NOTVALID means it was set"""
         for command_name in self._fields:
             if (command_response := getattr(self, command_name)) and not isinstance(command_response, Exception):
-                logger.debug(command_name)
-                logger.debug(command_response)
                 yield command_name, command_response
 
 
@@ -133,20 +102,6 @@ class ImpairmentConfigBase:
     def apply(self, impairment: TImpairment) -> GeneratorToken:
         raise NotImplementedError
 
-@dataclass
-class DistributionConfigBase:
-    def __iter__(self):
-        return iter(fields(self))
-
-    def load_server_value(self, distribution_token_response: Any) -> None:
-        for field in self:
-            if hasattr(distribution_token_response, field.name) and (value := getattr(distribution_token_response, field.name)):
-                setattr(self, field.name, value)
-            # else:
-            #     raise ValueError(f'{self} {field_name} could not be None')
-
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
-        raise NotImplementedError
 
 @dataclass
 class Schedule:
@@ -173,6 +128,24 @@ class DistributionWithNonBurstSchedule(DistributionConfigBase):
         yield from self.schedule.apply(impairment)
 
 
+distribution_class: Dict[str, Type[DistributionConfigBase]] = {
+    'fixed_burst': FixedBurst,
+    'random_burst': RandomBurst,
+    'fixed_rate': FixedRate,
+    'random_rate': RandomRate,
+    'bit_error_rate': BitErrorRate,
+    'ge': GilbertElliot,
+    'uniform': Uniform,
+    'gaussian': Gaussian,
+    'poisson': Poisson,
+    'gamma': Gamma,
+    'custom': Custom,
+    'accumulate_and_burst': AccumulateBurst,
+    'constant_delay': ConstantDelay,
+}
+
+
+
 @dataclass
 class ImpairmentWithDistributionConfig(ImpairmentConfigBase):
     read_distribution_config_from_server: BatchReadDistributionConfigFromServer
@@ -194,7 +167,7 @@ class ImpairmentWithDistributionConfig(ImpairmentConfigBase):
             distribution.schedule.period = schedule_respsonse.period
 
     def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
-        for distribution_name, distribution_response in validator.filter_valid_distribution:
+        for distribution_name, distribution_response in validator.filter_set_distribution:
             if distribution_name == 'enable':
                 self.enable = enums.OnOff(distribution_response.action)
             elif distribution_name == 'schedule':
@@ -205,7 +178,6 @@ class ImpairmentWithDistributionConfig(ImpairmentConfigBase):
                 self.set_distribution(distribution_config)
 
     def set_distribution(self, distribution: DistributionConfigBase) -> None:
-        logger.debug(distribution.__class__.__name__)
         if distribution.__class__.__name__ not in self.allow_set_distribution_class_name:
             raise InvalidDistributionError(self.allow_set_distribution_class_name)
         self._current_distribution = distribution

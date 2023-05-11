@@ -84,7 +84,7 @@ class ImpairmentWithDistributionConfigurator(ImpairmentConfiguratorBase[TImpairm
         pass
 
     def load_allow_set_class_name(self, impairment_name: str) -> Tuple[str, ...]:
-        return importlib.import_module(name=f'chimera_core.core.manager.distributions.{impairment_name}').__all__
+        return importlib.import_module(name=f'chimera_core.core.manager.flow.distributions.{impairment_name}').__all__
 
     def batch_read_distribution_config_commands(self) -> Dict[str, Token]:
         result = {}

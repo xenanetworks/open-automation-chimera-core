@@ -5,7 +5,7 @@ from xoa_driver import enums
 
 from chimera_core import controller, types
 from chimera_core.core.manager.flow.distributions.drop import FixedBurst
-
+from chimera_core.core.manager.flow.shadow_filter.__dataset import ProtocolSegement
 
 TESTER_IP_ADDRESS = '127.0.0.1'
 
@@ -35,7 +35,7 @@ async def main():
     module = await tester_manager.use_module(module_id=2, reserve=False)
     # await module.config.get()
 
-    port = await tester_manager.use_port(module_id=2, port_id=2, reserve=False)
+    port = await tester_manager.use_port(module_id=2, port_id=1, reserve=False)
 
     port_config = await port.config.get()
     logger.debug(port_config)

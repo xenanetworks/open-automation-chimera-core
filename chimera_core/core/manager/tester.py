@@ -1,6 +1,5 @@
 from typing import  Generator
 
-from loguru import logger
 from xoa_driver.v2.modules import ModuleChimera
 from xoa_driver.v2.ports import PortChimera
 from xoa_driver.v2.testers import L23Tester
