@@ -1,10 +1,11 @@
+import asyncio
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CCorruptionImpairment,
 )
 
-
-from .__base import ImpairmentWithDistributionConfigurator
-from .__dataset import BatchReadDistributionConfigFromServer
+from xoa_driver import enums
+from .__base import ImpairmentWithDistributionConfigurator, DistributionResponseValidator
+from .__dataset import BatchReadDistributionConfigFromServer, ImpairmentConfigCorruption
 
 
 class ImpairmentCorruption(ImpairmentWithDistributionConfigurator[CCorruptionImpairment]):
@@ -23,3 +24,6 @@ class ImpairmentCorruption(ImpairmentWithDistributionConfigurator[CCorruptionImp
             custom=True,
         )
         self.allow_set_distribution_class_name = self.load_allow_set_class_name('corruption')
+
+    async def get(self) -> ImpairmentConfigCorruption:
+        return await super().new_get(ImpairmentConfigCorruption)

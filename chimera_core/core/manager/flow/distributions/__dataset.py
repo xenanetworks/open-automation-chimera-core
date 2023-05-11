@@ -1,17 +1,12 @@
 import ipaddress
 from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Coroutine, Dict, Generator, Generic, List, NamedTuple, Optional, Protocol, Tuple, Type, TypeVar, Union, cast
-from enum import Enum
-from functools import partial, partialmethod
-from loguru import logger
 
-from xoa_driver import enums
 from xoa_driver.v2 import misc
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CLatencyJitterImpairment,
     CDropImpairment,
     CMisorderingImpairment,
-    CShaperImpairment,
 )
 
 
@@ -20,53 +15,6 @@ TPLD_FILTERS_LENGTH = 16
 
 GeneratorToken = Generator[misc.Token, None, None]
 
-class PortConfigPcsPmaBase:
-    enable: enums.OnOff = enums.OnOff.OFF
-    duration: int = 100
-    period: int = 10000
-    repetition: int = 0
-
-
-class PortConfigLinkFlap(PortConfigPcsPmaBase):
-    pass
-
-
-class PortConfigPulseError(PortConfigPcsPmaBase):
-    coeff: int = 1
-    exp: int = -4
-
-
-@dataclass
-class PortConfig:
-    comment: str = ''
-    enable_tx: bool = True
-    autoneg_selection: bool = False
-    emulate: enums.OnOff = enums.OnOff.OFF
-    tpld_mode: enums.TPLDMode = enums.TPLDMode.NORMAL
-    fcs_error_mode: enums.OnOff = enums.OnOff.OFF
-    link_flap: PortConfigLinkFlap = field(default_factory=PortConfigLinkFlap)
-    pulse_error: PortConfigPulseError = field(default_factory=PortConfigPulseError)
-
-    def set_emulate(self, on_off: enums.OnOff) -> None:
-        self.emulate = on_off
-
-    set_emulate_on = partialmethod(set_emulate, enums.OnOff.ON)
-    set_emulate_off = partialmethod(set_emulate, enums.OnOff.OFF)
-
-
-@dataclass
-class ModuleConfig:
-    comment: str = ''
-    timing_source: enums.TimingSource = enums.TimingSource.CHASSIS
-    clock_ppb: int = 1
-    tx_clock_source: enums.TXClockSource = enums.TXClockSource.MODULELOCALCLOCK
-    tx_clock_status: enums.TXClockStatus = enums.TXClockStatus.OK
-    latency_mode: enums.ImpairmentLatencyMode = enums.ImpairmentLatencyMode.NORMAL
-    cfp_type: enums.MediaCFPType = enums.MediaCFPType.CFP_UNKNOWN
-    cfp_state: enums.MediaCFPState = enums.MediaCFPState.NOT_CFP
-    port_count: int = 0
-    port_speed: int = 0
-    bypass_mode: enums.OnOff = enums.OnOff.OFF
 
 
 TypeExceptionAny = Union[Exception, Any, None]
@@ -315,7 +263,7 @@ class DistributionResponseValidator(NamedTuple):
     step: TypeExceptionAny = None
 
     @property
-    def filter_valid_distribution(self) -> Generator[Tuple[str, Any], None, None]:
+    def valid_distribution_response(self) -> Generator[Tuple[str, Any], None, None]:
         """if token respsonse is not NOTVALID means it was set"""
         for command_name in self._fields:
             if (command_response := getattr(self, command_name)) and not isinstance(command_response, Exception):
@@ -337,89 +285,3 @@ distribution_class: Dict[str, Type[DistributionConfigBase]] = {
     'accumulate_and_burst': AccumulateBurst,
     'constant_delay': ConstantDelay,
 }
-
-
-@dataclass
-class DistributionManager:
-    _current: Optional[DistributionConfigBase] = None
-
-    def get_current_distribution(self) -> Optional["DistributionConfigBase"]:
-        return self._current
-
-    def set_distribution(self, distribution: "DistributionConfigBase") -> None:
-        self._current = distribution
-
-    def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
-        for distribution_name, distribution_response in validator.filter_valid_distribution:
-            distribution_config = distribution_class[distribution_name]()
-            distribution_config.load_server_value(distribution_response)
-            self.set_distribution(distribution_config)
-
-    def set_schedule(self, schedule_respsonse: Any) -> None:
-        if (distribution := self.get_current_distribution()) \
-            and isinstance(distribution, DistributionWithNonBurstSchedule) \
-                and not isinstance(schedule_respsonse, Exception):
-            distribution.schedule.duration = schedule_respsonse.duration
-            distribution.schedule.period = schedule_respsonse.period
-
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
-        assert self._current
-        yield from self._current.apply(impairment)
-
-
-@dataclass
-class ImpairmentConfigBase:
-    enable: enums.OnOff = enums.OnOff.OFF
-
-
-@dataclass
-class ImpairmentConfigCorruption:
-    corruption_type: enums.CorruptionType = enums.CorruptionType.ETH
-    distribution: DistributionManager = field(default_factory=DistributionManager)
-
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
-        yield from self.distribution.apply(impairment)
-
-
-@dataclass
-class ImpairmentWithDistribution(ImpairmentConfigBase):
-    distribution: DistributionManager = field(default_factory=DistributionManager)
-
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
-        yield from self.distribution.apply(impairment)
-
-
-@dataclass
-class ImpairmentConfigPolicer:
-    on_off: enums.OnOff = enums.OnOff.OFF
-    mode: enums.PolicerMode = enums.PolicerMode.L2
-    cir: int = 0
-    cbs: int = 0
-
-
-@dataclass
-class ImpairmentConfigShaper:
-    on_off: enums.OnOff = enums.OnOff.OFF
-    mode: enums.PolicerMode = enums.PolicerMode.L2
-    cir: int = 0
-    cbs: int = 0
-    buffer_size: int = 0
-
-    async def set(self, impairment: CShaperImpairment) -> None:
-        impairment.config.set(
-            on_off=self.on_off,
-            mode=self.mode,
-            cir=self.cir,
-            cbs=self.cbs,
-            buffer_size=self.buffer_size,
-        )
-
-
-    def start(self, impairment: CShaperImpairment) -> GeneratorToken:
-        yield impairment.config.set(
-            on_off=enums.OnOff.ON,
-            mode=self.mode,
-            cir=self.cir,
-            cbs=self.cbs,
-            buffer_size=self.buffer_size,
-        )

@@ -217,6 +217,23 @@ class ImpairmentConfigPolicer:
     cir: int = 0
     cbs: int = 0
 
+    async def set(self, impairment: CPolicerImpairment) -> None:
+        impairment.config.set(
+            on_off=self.on_off,
+            mode=self.mode,
+            cir=self.cir,
+            cbs=self.cbs,
+        )
+
+
+    def start(self, impairment: CPolicerImpairment) -> GeneratorToken:
+        yield impairment.config.set(
+            on_off=enums.OnOff.ON,
+            mode=self.mode,
+            cir=self.cir,
+            cbs=self.cbs,
+        )
+
 
 @dataclass
 class ImpairmentConfigShaper:
@@ -244,3 +261,12 @@ class ImpairmentConfigShaper:
             cbs=self.cbs,
             buffer_size=self.buffer_size,
         )
+
+
+@dataclass
+class ImpairmentConfigCorruption(ImpairmentWithDistributionConfig):
+    corruption_type: enums.CorruptionType = enums.CorruptionType.ETH
+
+    def apply(self, impairment: CCorruptionImpairment) -> GeneratorToken:
+        yield impairment.type.set(self.corruption_type)
+        yield from super().apply(impairment)

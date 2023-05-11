@@ -5,17 +5,18 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
 )
 
 from .__base import ImpairmentConfiguratorBase
-from .__dataset import ImpairmentConfigPolicer
+from .__dataset import ImpairmentConfigShaper
 
 
 class ImpairmentShaper(ImpairmentConfiguratorBase[CShaperImpairment]):
-    async def get(self) -> ImpairmentConfigPolicer:
+    async def get(self) -> ImpairmentConfigShaper:
         config = await self.impairment.config.get()
 
-        config = ImpairmentConfigPolicer(
+        config = ImpairmentConfigShaper(
             on_off=enums.OnOff(config.on_off),
             mode=enums.PolicerMode(config.mode),
             cir=config.cir,
             cbs=config.cbs,
+            buffer_size=config.buffer_size,
         )
         return config
