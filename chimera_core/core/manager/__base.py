@@ -11,7 +11,9 @@ class ReserveMixin:
     async def reserve_if_not(self) -> None:
         coroutines = []
         if isinstance(self.resource_instance, L23Tester):
-            coroutines.extend(reserve_resources(module) for module in self.resource_instance.modules)
+            coroutines.extend(
+                reserve_resources(module) for module in self.resource_instance.modules if isinstance(module, ModuleChimera)
+            )
         elif isinstance(self.resource_instance, ModuleChimera):
             coroutines.extend(reserve_resources(port) for port in self.resource_instance.ports)
 
