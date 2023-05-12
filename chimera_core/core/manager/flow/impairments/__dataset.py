@@ -1,8 +1,7 @@
-from dataclasses import dataclass, field, fields
-from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union
+from dataclasses import dataclass, field
+from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, Union, Protocol
 
 from xoa_driver import enums
-from xoa_driver.v2 import misc
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CLatencyJitterImpairment,
     CDropImpairment,
@@ -30,7 +29,9 @@ from chimera_core.core.manager.flow.distributions.__dataset import (
     DistributionConfigBase,
     TImpairmentWithDistribution,
 )
+from chimera_core.core.manager.__dataset import IterDataclassMixin, GeneratorToken
 from chimera_core.core.manager.exception import InvalidDistributionError
+
 
 TImpairment = Union[
     CLatencyJitterImpairment,
@@ -44,11 +45,15 @@ TImpairment = Union[
 ]
 
 TypeTokenResponseOrError = Union[Exception, Any]
-GeneratorToken = Generator[misc.Token, None, None]
+
+
+class PImpairmentConfig(Protocol):
+    def apply(self, impairment: TImpairment) -> GeneratorToken:
+        ...
 
 
 @dataclass
-class BatchReadDistributionConfigFromServer:
+class BatchReadDistributionConfigFromServer(IterDataclassMixin):
     schedule: bool = False
     fixed_burst: bool = False
     random_burst: bool = False
@@ -64,9 +69,6 @@ class BatchReadDistributionConfigFromServer:
     accumulate_and_burst: bool = False
     constant_delay: bool = False
     step: bool = False
-
-    def __iter__(self):
-        return iter(fields(self))
 
 
 class DistributionResponseValidator(NamedTuple):
@@ -94,13 +96,6 @@ class DistributionResponseValidator(NamedTuple):
         for command_name in self._fields:
             if (command_response := getattr(self, command_name)) and not isinstance(command_response, Exception):
                 yield command_name, command_response
-
-
-class ImpairmentConfigBase:
-    enable: enums.OnOff = enums.OnOff.OFF
-
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
-        raise NotImplementedError
 
 
 @dataclass
@@ -147,13 +142,15 @@ distribution_class: Dict[str, Type[DistributionConfigBase]] = {
 
 
 @dataclass
-class ImpairmentWithDistributionConfig(ImpairmentConfigBase):
+class ImpairmentWithDistributionConfig:
     read_distribution_config_from_server: BatchReadDistributionConfigFromServer
     allow_set_distribution_class_name: Tuple[str, ...]
     _current_distribution: Optional[DistributionConfigBase] = None
+    enable: enums.OnOff = enums.OnOff.OFF
 
 
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
+        yield impairment.enable.set(self.enable)
         if self._current_distribution:
             yield from self._current_distribution.apply(impairment)
 
@@ -174,7 +171,7 @@ class ImpairmentWithDistributionConfig(ImpairmentConfigBase):
                 self.set_schedule(distribution_response)
             else:
                 distribution_config = distribution_class[distribution_name]()
-                distribution_config.load_server_value(distribution_response)
+                distribution_config.load_token_response_value(distribution_response)
                 self.set_distribution(distribution_config)
 
     def set_distribution(self, distribution: DistributionConfigBase) -> None:

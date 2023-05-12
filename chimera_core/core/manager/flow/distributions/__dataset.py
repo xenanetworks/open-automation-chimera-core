@@ -1,8 +1,7 @@
-import ipaddress
-from dataclasses import dataclass, field, fields
-from typing import Any, Generator, TypeVar,Union
+from abc import ABC, abstractclassmethod
+from dataclasses import dataclass, field
+from typing import Any, TypeVar
 
-from xoa_driver.v2 import misc
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CLatencyJitterImpairment,
     CDropImpairment,
@@ -10,12 +9,12 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CDuplicationImpairment,
     CCorruptionImpairment,
 )
+from chimera_core.core.manager.__dataset import IterDataclassMixin, GeneratorToken
+
 
 
 INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
 TPLD_FILTERS_LENGTH = 16
-
-GeneratorToken = Generator[misc.Token, None, None]
 
 
 TImpairmentWithDistribution = TypeVar(
@@ -28,18 +27,15 @@ TImpairmentWithDistribution = TypeVar(
     CCorruptionImpairment,
 )
 
-@dataclass
-class DistributionConfigBase:
-    def __iter__(self):
-        return iter(fields(self))
-
-    def load_server_value(self, distribution_token_response: Any) -> None:
+class DistributionConfigBase(ABC, IterDataclassMixin):
+    def load_token_response_value(self, distribution_token_response: Any) -> None:
         for field in self:
             if hasattr(distribution_token_response, field.name) and (value := getattr(distribution_token_response, field.name)):
                 setattr(self, field.name, value)
             # else:
             #     raise ValueError(f'{self} {field_name} could not be None')
 
+    @abstractclassmethod
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         raise NotImplementedError
 

@@ -14,7 +14,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
 from xoa_driver.v2.misc import Token
 
 if TYPE_CHECKING:
-    from .__dataset import ImpairmentConfigBase
+    from .__dataset import PImpairmentConfig
 
 T = TypeVar(
     'T',
@@ -55,7 +55,7 @@ class ImpairmentConfiguratorBase(Generic[T]):
         assert config, "Config not exists"
         await asyncio.gather(*config.start(self.impairment) if state else config.stop())
 
-    async def set(self, config: "ImpairmentConfigBase") -> None:
+    async def set(self, config: "PImpairmentConfig") -> None:
         await asyncio.gather(*config.apply(self.impairment))
 
 

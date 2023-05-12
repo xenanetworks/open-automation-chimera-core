@@ -5,9 +5,7 @@ from xoa_driver import enums, utils
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
-
-from ..__dataset import GeneratorToken
-
+from chimera_core.core.manager.__dataset import GeneratorToken
 from .__dataset import (
     TPLD_FILTERS_LENGTH,
     generate_inner_outer,

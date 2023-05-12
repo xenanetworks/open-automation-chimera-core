@@ -1,7 +1,18 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from functools import partialmethod
+from typing import Generator
 
 from xoa_driver import enums
+from xoa_driver.v2.misc import Token
+
+
+GeneratorToken = Generator[Token, None, None]
+
+
+class IterDataclassMixin:
+    def __iter__(self):
+        return iter(fields(self)) # type: ignore
+
 
 @dataclass
 class ModuleConfig:
