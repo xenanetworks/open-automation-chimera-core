@@ -1,6 +1,8 @@
 import asyncio
 from itertools import chain
 
+from loguru import logger
+
 from xoa_driver import enums, utils
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
@@ -73,7 +75,6 @@ class ShadowFilterConfiguratorBasic:
                 self.basic_mode.tcp.src_port.get(),
                 self.basic_mode.tcp.dest_port.get(),
 
-                self.basic_mode.tcp.settings.get(),
                 self.basic_mode.tpld.settings.get(),
                 *(self.basic_mode.tpld.test_payload_filters_config[i].get() for i in range(TPLD_FILTERS_LENGTH)),
 
@@ -121,7 +122,6 @@ class ShadowFilterConfiguratorBasic:
         )
 
         config_ipv4 = ShadowFilterConfigL3IPv4(
-            filter_use=enums.FilterUse(ipv4.use),
             match_action=enums.InfoAction(ipv4.action),
             src_addr=ShadowFilterConfigL2IPv4Addr(
                 use=enums.OnOff(ipv4_src_addr.use),
@@ -134,13 +134,11 @@ class ShadowFilterConfiguratorBasic:
                 mask=ipv4_dest_addr.mask,
             ),
             dscp=ShadowFilterConfigL2IPv4DSCP(
-                use=enums.OnOff(ipv4_dscp.use),
                 value=ipv4_dscp.value,
                 mask=ipv4_dscp.mask,
             ),
         )
         config_ipv6 = ShadowFilterConfigL3IPv6(
-            filter_use=enums.FilterUse(ipv6.use),
             match_action=enums.InfoAction(ipv6.action),
             src_addr=ShadowFilterConfigBasicIPv6SRCADDR(
                 use=enums.OnOff(ipv6_src_addr.use),
@@ -167,11 +165,10 @@ class ShadowFilterConfiguratorBasic:
         tpld_id_configs = []
         for i, setting in enumerate(tpld_id_settings):
             tpld_id_configs.append(ShadowFilterConfigTPLDID(filter_index=i, tpld_id=setting.id, use=setting.use))
-        tpld_id_configs = *tpld_id_configs,
         use_xena = ShadowFilterLayerXena(
             tpld=ShadowFilterConfigTPLD(
                 match_action=enums.InfoAction(tpld.action),
-                configs=tpld_id_configs),
+                configs=tuple(tpld_id_configs)),
             )
 
         config_any = ShadowFilterLayerAny(
@@ -247,7 +244,7 @@ class ShadowFilterConfiguratorBasic:
     def set_layer_3(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
         yield self.basic_mode.l3_use.set(use=config.layer_3.present)
         if config.layer_3 == enums.L3PlusPresent.IP4:
-            yield self.basic_mode.ip.v4.settings.set(use=config.layer_3.ipv4.filter_use, action=config.layer_3.ipv4.match_action)
+            yield self.basic_mode.ip.v4.settings.set(action=config.layer_3.ipv4.match_action)
             yield self.basic_mode.ip.v4.src_address.set(
                     use=config.layer_3.ipv4.src_addr.use,
                     value=config.layer_3.ipv4.src_addr.value,
@@ -260,7 +257,7 @@ class ShadowFilterConfiguratorBasic:
             )
 
         elif config.layer_3 == enums.L3PlusPresent.IP6:
-            yield self.basic_mode.ip.v6.settings.set(use=config.layer_3.ipv6.filter_use, action=config.layer_3.ipv6.match_action)
+            yield self.basic_mode.ip.v6.settings.set(action=config.layer_3.ipv6.match_action)
             yield self.basic_mode.ip.v6.src_address.set(
                     use=config.layer_3.ipv6.src_addr.use,
                     value=config.layer_3.ipv6.src_addr.value,

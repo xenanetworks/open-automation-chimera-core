@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, Union, Protocol
+from loguru import logger
 
 from xoa_driver import enums
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
@@ -154,6 +155,11 @@ class ImpairmentWithDistributionConfig:
         if self._current_distribution:
             yield from self._current_distribution.apply(impairment)
 
+    def start(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
+        yield impairment.enable.set(self.enable)
+        if self._current_distribution:
+            yield from self._current_distribution.apply(impairment)
+
     def get_current_distribution(self) -> Optional[DistributionConfigBase]:
         return self._current_distribution
 
@@ -175,9 +181,13 @@ class ImpairmentWithDistributionConfig:
                 self.set_distribution(distribution_config)
 
     def set_distribution(self, distribution: DistributionConfigBase) -> None:
+        logger.debug(self)
+        logger.debug(distribution.__class__.__name__)
+        logger.debug(self.allow_set_distribution_class_name)
         if distribution.__class__.__name__ not in self.allow_set_distribution_class_name:
             raise InvalidDistributionError(self.allow_set_distribution_class_name)
         self._current_distribution = distribution
+
 
 @dataclass
 class ImpairmentConfigPolicer:
@@ -186,7 +196,7 @@ class ImpairmentConfigPolicer:
     cir: int = 0
     cbs: int = 0
 
-    async def set(self, impairment: CPolicerImpairment) -> None:
+    async def apply(self, impairment: CPolicerImpairment) -> None:
         impairment.config.set(
             on_off=self.on_off,
             mode=self.mode,
@@ -212,8 +222,8 @@ class ImpairmentConfigShaper:
     cbs: int = 0
     buffer_size: int = 0
 
-    async def set(self, impairment: CShaperImpairment) -> None:
-        impairment.config.set(
+    def apply(self, impairment: CShaperImpairment) -> GeneratorToken:
+        yield impairment.config.set(
             on_off=self.on_off,
             mode=self.mode,
             cir=self.cir,

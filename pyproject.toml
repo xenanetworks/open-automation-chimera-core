@@ -1,0 +1,16 @@
+[project]
+name = "chimera-core"
+version = ""
+description = ""
+authors = [
+]
+dependencies = [
+    "pydantic>=1.10.2",
+    "loguru>=0.6.0",
+]
+requires-python = ">=3.8"
+[project.optional-dependencies]
+
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"

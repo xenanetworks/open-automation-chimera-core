@@ -26,4 +26,4 @@ class ImpairmentCorruption(ImpairmentWithDistributionConfigurator[CCorruptionImp
         self.allow_set_distribution_class_name = self.load_allow_set_class_name('corruption')
 
     async def get(self) -> ImpairmentConfigCorruption:
-        return await super().new_get(ImpairmentConfigCorruption)
+        return await super().get(ImpairmentConfigCorruption)

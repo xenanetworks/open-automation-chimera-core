@@ -96,18 +96,7 @@ class ImpairmentWithDistributionConfigurator(ImpairmentConfiguratorBase[TImpairm
         result['schedule'] = self.impairment.schedule.get()
         return result
 
-    async def get(self) -> ImpairmentWithDistributionConfig:
-        command_tokens = self.batch_read_distribution_config_commands()
-        command_response = await asyncio.gather(*command_tokens.values(), return_exceptions=True)
-        response_mapping = dict(zip(command_tokens.keys(), command_response))
-        config = ImpairmentWithDistributionConfig(
-            read_distribution_config_from_server=self.read_distribution_config_from_server,
-            allow_set_distribution_class_name=self.allow_set_distribution_class_name,
-        )
-        config.load_value_from_server_response(DistributionResponseValidator(**response_mapping))
-        return config
-
-    async def new_get(self, impairment_config_class: Optional[Type[TConfig]] = None) -> TConfig:
+    async def get(self, impairment_config_class: Optional[Type[TConfig]] = None) -> TConfig:
         command_tokens = self.batch_read_distribution_config_commands()
         command_response = await asyncio.gather(*command_tokens.values(), return_exceptions=True)
         response_mapping = dict(zip(command_tokens.keys(), command_response))

@@ -239,5 +239,5 @@ class ConstantDelay(DistributionWithFixedContinuousSchedule):
     delay: int = 0
 
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield impairment.distribution.constant_delay.set(delay=self.delay)
+        # yield impairment.distribution.constant_delay.set(delay=self.delay)
         yield from super().apply(impairment)
