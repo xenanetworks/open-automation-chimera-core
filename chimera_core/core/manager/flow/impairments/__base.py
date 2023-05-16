@@ -16,46 +16,37 @@ from xoa_driver.v2.misc import Token
 if TYPE_CHECKING:
     from .__dataset import PImpairmentConfig
 
-T = TypeVar(
-    'T',
-    CLatencyJitterImpairment,
-    CDropImpairment,
-    CMisorderingImpairment,
-    CLatencyJitterImpairment,
-    CPolicerImpairment,
-    CDuplicationImpairment,
-    CCorruptionImpairment,
-    CShaperImpairment,
-)
+
 
 from .__dataset import (
+    TImpairment,
+    TImpairmentGeneral,
     BatchReadDistributionConfigFromServer,
-    ImpairmentWithDistributionConfig,
+    ImpairmentConfigGeneral,
+    ImpairmentConfigBase,
     DistributionResponseValidator,
     ImpairmentConfigCorruption,
 )
 
 
-class ImpairmentConfiguratorBase(Generic[T]):
-    def __init__(self, impairment: T):
+class ImpairmentManagerBase(Generic[TImpairmentGeneral]):
+    def __init__(self, impairment: TImpairmentGeneral):
         self.impairment = impairment
-        self.config: Optional[Any] = None
+        self.config: Optional[ImpairmentConfigBase] = None
 
     async def start(self, config: Optional[Any] = None) -> None:
         await self.toggle(True, config)
-        # if isinstance(self, (CPolicerImpairment, CShaperImpairment)):
-        #     await self.config.set()
-        # await self.impairment.enable.set(enums.OnOff(state))
 
     async def stop(self, config: Optional[Any] = None) -> None:
         await self.toggle(False, config)
 
-    async def toggle(self, state: bool, config: Optional[Any] = None) -> None:
+    async def toggle(self, state: bool, config: Optional[ImpairmentConfigBase] = None) -> None:
         config = config or self.config
         assert config, "Config not exists"
-        await asyncio.gather(*config.start(self.impairment) if state else config.stop())
+        await asyncio.gather(*config.start(self.impairment) if state else config.stop(self.impairment))
 
-    async def set(self, config: "PImpairmentConfig") -> None:
+    async def set(self, config: ImpairmentConfigBase) -> None:
+        self.config = config
         await asyncio.gather(*config.apply(self.impairment))
 
 
@@ -70,9 +61,9 @@ TImpairmentWithDistribution = TypeVar(
     CCorruptionImpairment,
 )
 
-TConfig = TypeVar('TConfig', ImpairmentWithDistributionConfig, ImpairmentConfigCorruption)
+TConfig = TypeVar('TConfig', ImpairmentConfigGeneral, ImpairmentConfigCorruption)
 
-class ImpairmentWithDistributionConfigurator(ImpairmentConfiguratorBase[TImpairmentWithDistribution]):
+class ImpairmentManagerGeneral(ImpairmentManagerBase[TImpairmentWithDistribution]):
     read_distribution_config_from_server: BatchReadDistributionConfigFromServer
     allow_set_distribution_class_name: Tuple[str, ...]
 
@@ -101,7 +92,7 @@ class ImpairmentWithDistributionConfigurator(ImpairmentConfiguratorBase[TImpairm
         command_response = await asyncio.gather(*command_tokens.values(), return_exceptions=True)
         response_mapping = dict(zip(command_tokens.keys(), command_response))
 
-        impairment_config_class = impairment_config_class or ImpairmentWithDistributionConfig # type: ignore
+        impairment_config_class = impairment_config_class or ImpairmentConfigGeneral # type: ignore
         assert impairment_config_class
 
         config = impairment_config_class(

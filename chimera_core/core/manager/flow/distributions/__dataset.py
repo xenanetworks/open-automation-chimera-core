@@ -1,6 +1,7 @@
 from abc import ABC, abstractclassmethod
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Union
+from loguru import logger
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CLatencyJitterImpairment,
@@ -8,6 +9,8 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CMisorderingImpairment,
     CDuplicationImpairment,
     CCorruptionImpairment,
+    CPolicerImpairment,
+    CShaperImpairment,
 )
 from chimera_core.core.manager.__dataset import IterDataclassMixin, GeneratorToken
 
@@ -16,16 +19,26 @@ from chimera_core.core.manager.__dataset import IterDataclassMixin, GeneratorTok
 INTERVEL_CHECK_RESERVE_RESOURCE = 0.01
 TPLD_FILTERS_LENGTH = 16
 
+TImpairmentGeneral = TypeVar(
+    'TImpairmentGeneral',
+    CLatencyJitterImpairment,
+    CDropImpairment,
+    CMisorderingImpairment,
+    CLatencyJitterImpairment,
+    CPolicerImpairment,
+    CDuplicationImpairment,
+    CCorruptionImpairment,
+    CShaperImpairment,
+)
 
-TImpairmentWithDistribution = TypeVar(
-    'TImpairmentWithDistribution',
+TImpairmentWithDistribution = Union[
     CLatencyJitterImpairment,
     CDropImpairment,
     CMisorderingImpairment,
     CLatencyJitterImpairment,
     CDuplicationImpairment,
     CCorruptionImpairment,
-)
+]
 
 class DistributionConfigBase(ABC, IterDataclassMixin):
     def load_token_response_value(self, distribution_token_response: Any) -> None:
@@ -239,5 +252,6 @@ class ConstantDelay(DistributionWithFixedContinuousSchedule):
     delay: int = 0
 
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        # yield impairment.distribution.constant_delay.set(delay=self.delay)
+        logger.debug(impairment)
+        yield impairment.distribution.constant_delay.set(delay=self.delay)
         yield from super().apply(impairment)

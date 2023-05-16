@@ -1,5 +1,6 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, Union, Protocol
+from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union, Protocol
 from loguru import logger
 
 from xoa_driver import enums
@@ -32,6 +33,7 @@ from chimera_core.core.manager.flow.distributions.__dataset import (
 )
 from chimera_core.core.manager.__dataset import IterDataclassMixin, GeneratorToken
 from chimera_core.core.manager.exception import InvalidDistributionError
+from .exception import DistributionNotSetError
 
 
 TImpairment = Union[
@@ -44,6 +46,18 @@ TImpairment = Union[
     CShaperImpairment,
     CPolicerImpairment,
 ]
+
+TImpairmentGeneral = TypeVar(
+    'TImpairmentGeneral',
+    CLatencyJitterImpairment,
+    CDropImpairment,
+    CMisorderingImpairment,
+    CLatencyJitterImpairment,
+    CPolicerImpairment,
+    CDuplicationImpairment,
+    CCorruptionImpairment,
+    CShaperImpairment,
+)
 
 TypeTokenResponseOrError = Union[Exception, Any]
 
@@ -92,7 +106,7 @@ class DistributionResponseValidator(NamedTuple):
     schedule: TypeTokenResponseOrError = None
 
     @property
-    def filter_set_distribution(self) -> Generator[Tuple[str, Any], None, None]:
+    def was_set_distributions(self) -> Generator[Tuple[str, Any], None, None]:
         """if token respsonse is not NOTVALID means it was set"""
         for command_name in self._fields:
             if (command_response := getattr(self, command_name)) and not isinstance(command_response, Exception):
@@ -140,25 +154,43 @@ distribution_class: Dict[str, Type[DistributionConfigBase]] = {
     'constant_delay': ConstantDelay,
 }
 
+@dataclass
+class ImpairmentConfigBase(ABC):
+    @abstractmethod
+    def start(self, impairment: TImpairmentGeneral) -> GeneratorToken:
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop(self, impairment: TImpairmentGeneral) -> GeneratorToken:
+        raise NotImplementedError
+
+    @abstractmethod
+    def apply(self, impairment: TImpairmentGeneral) -> GeneratorToken:
+        raise NotImplementedError
 
 
 @dataclass
-class ImpairmentWithDistributionConfig:
+class ImpairmentConfigGeneral(ImpairmentConfigBase):
     read_distribution_config_from_server: BatchReadDistributionConfigFromServer
     allow_set_distribution_class_name: Tuple[str, ...]
     _current_distribution: Optional[DistributionConfigBase] = None
     enable: enums.OnOff = enums.OnOff.OFF
 
-
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield impairment.enable.set(self.enable)
+        yield from self.apply_distribution(impairment)
+
+    def apply_distribution(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         if self._current_distribution:
             yield from self._current_distribution.apply(impairment)
+        else:
+            raise DistributionNotSetError()
+
+    def stop(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
+        yield impairment.enable.set(enums.OnOff.OFF)
 
     def start(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         yield impairment.enable.set(self.enable)
-        if self._current_distribution:
-            yield from self._current_distribution.apply(impairment)
+        yield from self.apply_distribution(impairment)
 
     def get_current_distribution(self) -> Optional[DistributionConfigBase]:
         return self._current_distribution
@@ -170,7 +202,7 @@ class ImpairmentWithDistributionConfig:
             distribution.schedule.period = schedule_respsonse.period
 
     def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
-        for distribution_name, distribution_response in validator.filter_set_distribution:
+        for distribution_name, distribution_response in validator.was_set_distributions:
             if distribution_name == 'enable':
                 self.enable = enums.OnOff(distribution_response.action)
             elif distribution_name == 'schedule':
@@ -243,7 +275,7 @@ class ImpairmentConfigShaper:
 
 
 @dataclass
-class ImpairmentConfigCorruption(ImpairmentWithDistributionConfig):
+class ImpairmentConfigCorruption(ImpairmentConfigGeneral):
     corruption_type: enums.CorruptionType = enums.CorruptionType.ETH
 
     def apply(self, impairment: CCorruptionImpairment) -> GeneratorToken:

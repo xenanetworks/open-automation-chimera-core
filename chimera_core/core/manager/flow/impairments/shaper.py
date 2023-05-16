@@ -4,11 +4,11 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CShaperImpairment,
 )
 
-from .__base import ImpairmentConfiguratorBase
+from .__base import ImpairmentManagerBase
 from .__dataset import ImpairmentConfigShaper
 
 
-class ImpairmentShaper(ImpairmentConfiguratorBase[CShaperImpairment]):
+class ImpairmentShaper(ImpairmentManagerBase[CShaperImpairment]):
     async def get(self) -> ImpairmentConfigShaper:
         config = await self.impairment.config.get()
 

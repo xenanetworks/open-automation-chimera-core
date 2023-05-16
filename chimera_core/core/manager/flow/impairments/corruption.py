@@ -4,11 +4,11 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
 )
 
 from xoa_driver import enums
-from .__base import ImpairmentWithDistributionConfigurator, DistributionResponseValidator
+from .__base import ImpairmentManagerGeneral, DistributionResponseValidator
 from .__dataset import BatchReadDistributionConfigFromServer, ImpairmentConfigCorruption
 
 
-class ImpairmentCorruption(ImpairmentWithDistributionConfigurator[CCorruptionImpairment]):
+class ImpairmentCorruption(ImpairmentManagerGeneral[CCorruptionImpairment]):
     def configure_distributions(self) -> None:
         self.read_distribution_config_from_server = BatchReadDistributionConfigFromServer(
             fixed_burst=True,
