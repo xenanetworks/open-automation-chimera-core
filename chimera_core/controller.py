@@ -14,7 +14,7 @@ from .core import const
 from . import exception
 
 if TYPE_CHECKING:
-    from .types.resources import EMsgType
+    from .types.dataset import EMsgType
     from .core.resources.datasets.external import credentials
 
 

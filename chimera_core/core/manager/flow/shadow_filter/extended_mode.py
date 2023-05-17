@@ -18,15 +18,15 @@ class ShadowFilterConfiguratorExtended:
         self.shadow_filter = filter_
         self.extended_mode = extended_mode
 
-    async def get_single_protocol_segment_content(self, protocol_segment: HLIProtocolSegment) -> ProtocolSegement:
+    async def get_single_protocol_segment_content(self, hli_protocol_segment: HLIProtocolSegment) -> ProtocolSegement:
         value, mask = await utils.apply(
-            protocol_segment.value.get(),
-            protocol_segment.mask.get(),
+            hli_protocol_segment.value.get(),
+            hli_protocol_segment.mask.get(),
         )
         value = ''.join(h.replace('0x', '') for h in value.value)
         mask = ''.join(h.replace('0x', '') for h in mask.masks)
         return ProtocolSegement(
-            protocol_type=protocol_segment.segment_type,
+            protocol_type=hli_protocol_segment.segment_type,
             value=value,
             mask=mask,
         )
@@ -40,7 +40,7 @@ class ShadowFilterConfiguratorExtended:
     async def get(self) -> ShadowFilterConfigExtended:
         protocol_types = await self.extended_mode.get_protocol_segments()
         segments = await asyncio.gather(*(
-            self.get_single_protocol_segment_content(protocol_segment=proto) for proto in protocol_types
+            self.get_single_protocol_segment_content(hli_protocol_segment=proto) for proto in protocol_types
         ))
         return ShadowFilterConfigExtended(protocol_segments=tuple(segments))
 

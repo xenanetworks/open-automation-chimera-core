@@ -277,9 +277,13 @@ class ShadowFilterConfigBasic:
     layer_any: ShadowFilterLayerAny = field(default_factory=ShadowFilterLayerAny)
 
 
+
+ProtocolOption = enums.ProtocolOption
+
+
 @dataclass
 class ProtocolSegement:
-    protocol_type: enums.ProtocolOption
+    protocol_type: ProtocolOption
     value: str
     mask: str
 
