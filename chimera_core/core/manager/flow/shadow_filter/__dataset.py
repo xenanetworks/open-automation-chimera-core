@@ -51,14 +51,11 @@ class FilterConfigCommon:
         self.filter_use = enums.FilterUse.AND
         self.match_action = enums.InfoAction.EXCLUDE
 
-    def _use_and(self) -> None:
+    def __use_and(self) -> None:
         self.filter_use = enums.FilterUse.AND
 
-    def _use_off(self) -> None:
+    def __use_off(self) -> None:
         self.filter_use = enums.FilterUse.OFF
-
-    def action(self, include=True):
-        self.match_action = enums.InfoAction.INCLUDE if include else enums.InfoAction.EXCLUDE
 
 
 @dataclass
@@ -237,7 +234,7 @@ class ShadowFilterLayerXena:
     tpld: ShadowFilterConfigTPLD = field(default_factory=ShadowFilterConfigTPLD)
 
     def use_tpld(self) -> ShadowFilterConfigTPLD:
-        self.tpld._use_and()
+        self.tpld.__use_and()
         return self.tpld
 
 
@@ -258,7 +255,7 @@ class ShadowFilterLayerAny(FilterConfigCommon):
     any_field: ShadowFilterConfigAnyField = field(default_factory=ShadowFilterConfigAnyField)
 
     def use_any_field(self) -> ShadowFilterConfigAnyField:
-        self.any_field._use_and()
+        self.any_field.__use_and()
         return self.any_field
 
 

@@ -244,7 +244,7 @@ class ShadowFilterConfiguratorBasic:
     def set_layer_3(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
         yield self.basic_mode.l3_use.set(use=config.layer_3.present)
         if config.layer_3 == enums.L3PlusPresent.IP4:
-            yield self.basic_mode.ip.v4.settings.set(action=config.layer_3.ipv4.match_action)
+            yield self.basic_mode.ip.v4.settings.set(use=config.layer_3.ipv4.filter_use, action=config.layer_3.ipv4.match_action)
             yield self.basic_mode.ip.v4.src_address.set(
                     use=config.layer_3.ipv4.src_addr.use,
                     value=config.layer_3.ipv4.src_addr.value,
@@ -257,7 +257,7 @@ class ShadowFilterConfiguratorBasic:
             )
 
         elif config.layer_3 == enums.L3PlusPresent.IP6:
-            yield self.basic_mode.ip.v6.settings.set(action=config.layer_3.ipv6.match_action)
+            yield self.basic_mode.ip.v6.settings.set(use=config.layer_3.ipv6.filter_use, action=config.layer_3.ipv6.match_action)
             yield self.basic_mode.ip.v6.src_address.set(
                     use=config.layer_3.ipv6.src_addr.use,
                     value=config.layer_3.ipv6.src_addr.value,
