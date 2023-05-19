@@ -13,7 +13,9 @@ class ShadowFilterManager:
     def __init__(self, filter: "FilterDefinitionShadow"):
         self.filter = filter
 
-    async def reset(self) -> None:
+    async def clear(self) -> None:
+        """reset shadow filter configuration to its default values.
+        """
         await self.filter.initiating.set()
 
     async def use_basic_mode(self) -> "ShadowFilterBasic":
@@ -29,7 +31,16 @@ class ShadowFilterManager:
         assert isinstance(mode, ModeExtendedS), "Not extended mode"
         return ShadowFilterExtended(self.filter, mode)
 
-    async def enable(self, state: bool) -> None:
-        await self.filter.enable.set(enums.OnOff(state))
-        if state:
-            await self.filter.apply.set()
+    async def enable(self) -> None:
+        await self.filter.enable.set(enums.OnOff.ON)
+
+    async def disable(self) -> None:
+        await self.filter.enable.set(enums.OnOff.OFF)
+
+    async def apply(self) -> None:
+        """apply changes made to shadow to working"""
+        await self.filter.apply.set()
+
+    async def cancel(self) -> None:
+        """cancel changes made to shadow and restore config from working"""
+        await self.filter.cancel.set()
