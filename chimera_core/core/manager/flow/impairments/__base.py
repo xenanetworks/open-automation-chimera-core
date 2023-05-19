@@ -1,25 +1,17 @@
 import asyncio
 import importlib
-from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, TYPE_CHECKING, Union
+from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CDropImpairment,
     CMisorderingImpairment,
     CLatencyJitterImpairment,
-    CPolicerImpairment,
     CDuplicationImpairment,
     CCorruptionImpairment,
-    CShaperImpairment,
 )
 from xoa_driver.v2.misc import Token
 
-if TYPE_CHECKING:
-    from .__dataset import PImpairmentConfig
-
-
-
 from .__dataset import (
-    TImpairment,
     TImpairmentGeneral,
     BatchReadDistributionConfigFromServer,
     ImpairmentConfigGeneral,

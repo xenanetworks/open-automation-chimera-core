@@ -3,13 +3,10 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow
     FilterDefinitionShadow,
     ModeExtendedS,
 )
-
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
-from .basic_mode import (
-    ShadowFilterConfiguratorBasic,
-)
-from .extended_mode import ShadowFilterConfiguratorExtended
+from .basic_mode import ShadowFilterBasic
+from .extended_mode import ShadowFilterExtended
 
 
 class ShadowFilterManager:
@@ -19,17 +16,18 @@ class ShadowFilterManager:
     async def reset(self) -> None:
         await self.filter.initiating.set()
 
-    async def use_basic_mode(self) -> "ShadowFilterConfiguratorBasic":
+    async def use_basic_mode(self) -> "ShadowFilterBasic":
+        mode = await self.filter.get_mode()
         await self.filter.use_basic_mode()
         mode = await self.filter.get_mode()
         assert isinstance(mode, ModeBasic), "Not base mode"
-        return ShadowFilterConfiguratorBasic(self.filter, mode)
+        return ShadowFilterBasic(self.filter, mode)
 
-    async def use_extended_mode(self) -> "ShadowFilterConfiguratorExtended":
+    async def use_extended_mode(self) -> "ShadowFilterExtended":
         await self.filter.use_extended_mode()
         mode = await self.filter.get_mode()
         assert isinstance(mode, ModeExtendedS), "Not extended mode"
-        return ShadowFilterConfiguratorExtended(self.filter, mode)
+        return ShadowFilterExtended(self.filter, mode)
 
     async def enable(self, state: bool) -> None:
         await self.filter.enable.set(enums.OnOff(state))

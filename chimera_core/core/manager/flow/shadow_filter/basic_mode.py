@@ -10,7 +10,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 from chimera_core.core.manager.__dataset import GeneratorToken
 from .__dataset import (
     TPLD_FILTERS_LENGTH,
-    generate_inner_outer,
+    create_inner_outer,
     ShadowFilterConfigBasic,
     ShadowFilterConfigEthernet,
     ShadowFilterConfigEthernetAddr,
@@ -32,14 +32,13 @@ from .__dataset import (
     ShadowFilterConfigTPLD,
     ShadowFilterConfigTPLDID,
     ShadowFilterConfigAnyField,
-
 )
 
 
-class ShadowFilterConfiguratorBasic:
-    def __init__(self, filter_: "FilterDefinitionShadow", basic_mode: "ModeBasic"):
-        self.shadow_filter = filter_
-        self.basic_mode = basic_mode
+class ShadowFilterBasic:
+    def __init__(self, shadow_filter_hli: "FilterDefinitionShadow", basic_mode_hli: "ModeBasic"):
+        self.shadow_filter = shadow_filter_hli
+        self.basic_mode = basic_mode_hli
 
     async def get(self) -> ShadowFilterConfigBasic:
         ethernet, ethernet_src_addr, ethernet_dest_addr, \
@@ -47,7 +46,7 @@ class ShadowFilterConfiguratorBasic:
             l3, ipv4, ipv4_src_addr, ipv4_dest_addr, ipv4_dscp, ipv6, ipv6_src_addr, ipv6_dest_addr, \
             tcp, tcp_src_port, tcp_dest_port, \
             tpld, *tpld_id_settings, \
-            any_, any_field = await asyncio.gather(*(
+            any_setting, any_config = await asyncio.gather(*(
                 self.basic_mode.ethernet.settings.get(),
                 self.basic_mode.ethernet.src_address.get(),
                 self.basic_mode.ethernet.dest_address.get(),
@@ -80,56 +79,49 @@ class ShadowFilterConfiguratorBasic:
 
                 self.basic_mode.any.settings.get(),
                 self.basic_mode.any.config.get(),
-
-            ), return_exceptions=True)
+            ))
 
 
         config_ethernet = ShadowFilterConfigEthernet(
-            filter_use=enums.FilterUse(ethernet.use),
-            match_action=enums.InfoAction(ethernet.action),
+            filter_use=ethernet.use,
+            match_action=ethernet.action,
             src_addr=ShadowFilterConfigEthernetAddr(
-                use=enums.OnOff(ethernet_src_addr.use),
+                use=ethernet_src_addr.use,
                 value=str(ethernet_src_addr.value),
                 mask=ethernet_src_addr.mask,
             ),
             dest_addr=ShadowFilterConfigEthernetAddr(
-                use=enums.OnOff(ethernet_dest_addr.use),
+                use=ethernet_dest_addr.use,
                 value=str(ethernet_dest_addr.value),
                 mask=ethernet_dest_addr.mask,
             ),
         )
 
-        tag_inner = generate_inner_outer(vlan_tag_inner)
-        tag_outer = generate_inner_outer(vlan_tag_outer)
-        pcp_inner = generate_inner_outer(vlan_pcp_inner)
-        pcp_outer = generate_inner_outer(vlan_pcp_outer)
         config_vlan = ShadowFilterConfigL2VLAN(
-            filter_use=enums.FilterUse(vlan.use),
-            match_action=enums.InfoAction(vlan.action),
-            tag_inner=tag_inner,
-            tag_outer=tag_outer,
-            pcp_inner=pcp_inner,
-            pcp_outer=pcp_outer,
+            filter_use=vlan.use,
+            match_action=vlan.action,
+            tag_inner=create_inner_outer(vlan_tag_inner),
+            tag_outer=create_inner_outer(vlan_tag_outer),
+            pcp_inner=create_inner_outer(vlan_pcp_inner),
+            pcp_outer=create_inner_outer(vlan_pcp_outer),
         )
 
-        config_mpls_label = generate_inner_outer(mpls_label)
-        config_mpls_toc = generate_inner_outer(mpls_toc)
         config_mpls = ShadowFilterConfigL2MPLS(
-            filter_use=enums.FilterUse(mpls.use),
-            match_action=enums.InfoAction(mpls.action),
-            label=config_mpls_label,
-            toc=config_mpls_toc,
+            filter_use=mpls.use,
+            match_action=mpls.action,
+            label=create_inner_outer(mpls_label),
+            toc=create_inner_outer(mpls_toc),
         )
 
         config_ipv4 = ShadowFilterConfigL3IPv4(
-            match_action=enums.InfoAction(ipv4.action),
+            match_action=ipv4.action,
             src_addr=ShadowFilterConfigL2IPv4Addr(
-                use=enums.OnOff(ipv4_src_addr.use),
+                use=ipv4_src_addr.use,
                 value=ipv4_src_addr.value,
                 mask=ipv4_src_addr.mask,
             ),
             dest_addr=ShadowFilterConfigL2IPv4Addr(
-                use=enums.OnOff(ipv4_dest_addr.use),
+                use=ipv4_dest_addr.use,
                 value=ipv4_dest_addr.value,
                 mask=ipv4_dest_addr.mask,
             ),
@@ -139,24 +131,24 @@ class ShadowFilterConfiguratorBasic:
             ),
         )
         config_ipv6 = ShadowFilterConfigL3IPv6(
-            match_action=enums.InfoAction(ipv6.action),
+            match_action=ipv6.action,
             src_addr=ShadowFilterConfigBasicIPv6SRCADDR(
-                use=enums.OnOff(ipv6_src_addr.use),
+                use=ipv6_src_addr.use,
                 value=str(ipv6_src_addr.value),
                 mask=ipv6_src_addr.mask,
             ),
             dest_addr=ShadowFilterConfigBasicIPv6DESTADDR(
-                use=enums.OnOff(ipv6_dest_addr.use),
+                use=ipv6_dest_addr.use,
                 value=str(ipv6_dest_addr.value),
                 mask=ipv6_dest_addr.mask,
             ),
         )
 
         config_tcp = ShadowFilterConfigL4TCP(
-            filter_use=enums.FilterUse(tcp.use),
-            match_action=enums.InfoAction(tcp.action),
-            src_port=generate_inner_outer(tcp_src_port),
-            dest_port=generate_inner_outer(tcp_dest_port),
+            filter_use=tcp.use,
+            match_action=tcp.action,
+            src_port=create_inner_outer(tcp_src_port),
+            dest_port=create_inner_outer(tcp_dest_port),
         )
         use_l2plus = ShadowFilterLayer2Plus(present=l2.use, vlan=config_vlan, mpls=config_mpls)
         use_l3 = ShadowFilterLayer3(present=l3.use, ipv4=config_ipv4, ipv6=config_ipv6)
@@ -167,16 +159,16 @@ class ShadowFilterConfiguratorBasic:
             tpld_id_configs.append(ShadowFilterConfigTPLDID(filter_index=i, tpld_id=setting.id, use=setting.use))
         use_xena = ShadowFilterLayerXena(
             tpld=ShadowFilterConfigTPLD(
-                match_action=enums.InfoAction(tpld.action),
+                match_action=tpld.action,
                 configs=tuple(tpld_id_configs)),
             )
 
         config_any = ShadowFilterLayerAny(
-            filter_use=enums.FilterUse(any_.use),
-            match_action=enums.InfoAction(any_.action),
-            any_field=ShadowFilterConfigAnyField(position=any_field.position, value=any_field.value, mask=any_field.mask),
+            filter_use=any_setting.use,
+            match_action=any_setting.action,
+            any_field=ShadowFilterConfigAnyField(position=any_config.position, value=any_config.value, mask=any_config.mask),
         )
-        config = ShadowFilterConfigBasic(
+        basic_config = ShadowFilterConfigBasic(
             layer_2=ShadowFilterLayer2(ethernet=config_ethernet),
             layer_2_plus=use_l2plus,
             layer_3=use_l3,
@@ -184,7 +176,7 @@ class ShadowFilterConfiguratorBasic:
             layer_xena=use_xena,
             layer_any=config_any,
         )
-        return config
+        return basic_config
 
     def set_layer_2(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
         if config.layer_2.ethernet.is_off:
@@ -210,22 +202,22 @@ class ShadowFilterConfiguratorBasic:
             yield self.basic_mode.vlan.inner.tag.set(
                     use=config.layer_2_plus.vlan.tag_inner.use,
                     value=config.layer_2_plus.vlan.tag_inner.value,
-                    mask=f"0x{config.layer_2_plus.vlan.tag_inner.mask}",
+                    mask=f"{config.layer_2_plus.vlan.tag_inner.mask}",
             )
             yield self.basic_mode.vlan.inner.pcp.set(
                     use=config.layer_2_plus.vlan.pcp_inner.use,
                     value=config.layer_2_plus.vlan.pcp_inner.value,
-                    mask=f"0x{config.layer_2_plus.vlan.pcp_inner.mask}",
+                    mask=f"{config.layer_2_plus.vlan.pcp_inner.mask}",
             )
             yield self.basic_mode.vlan.outer.tag.set(
                     use=config.layer_2_plus.vlan.tag_outer.use,
                     value=config.layer_2_plus.vlan.tag_outer.value,
-                    mask=f"0x{config.layer_2_plus.vlan.tag_outer.mask}",
+                    mask=f"{config.layer_2_plus.vlan.tag_outer.mask}",
             )
             yield self.basic_mode.vlan.outer.pcp.set(
                     use=config.layer_2_plus.vlan.pcp_outer.use,
                     value=config.layer_2_plus.vlan.pcp_outer.value,
-                    mask=f"0x{config.layer_2_plus.vlan.pcp_outer.mask}",
+                    mask=f"{config.layer_2_plus.vlan.pcp_outer.mask}",
             )
 
         elif config.layer_2_plus.present == enums.L2PlusPresent.MPLS:
@@ -233,12 +225,12 @@ class ShadowFilterConfiguratorBasic:
             yield self.basic_mode.mpls.label.set(
                     use=config.layer_2_plus.mpls.label.use,
                     value=config.layer_2_plus.mpls.label.value,
-                    mask=f"0x{config.layer_2_plus.mpls.label.mask}",
+                    mask=f"{config.layer_2_plus.mpls.label.mask}",
             )
             yield self.basic_mode.mpls.toc.set(
                     use=config.layer_2_plus.mpls.toc.use,
                     value=config.layer_2_plus.mpls.toc.value,
-                    mask=f"0x{config.layer_2_plus.mpls.toc.mask}",
+                    mask=f"{config.layer_2_plus.mpls.toc.mask}",
             )
 
     def set_layer_3(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
@@ -275,24 +267,24 @@ class ShadowFilterConfiguratorBasic:
             yield self.basic_mode.tcp.src_port.set(
                     use=config.layer_4.tcp.src_port.use,
                     value=config.layer_4.tcp.src_port.value,
-                    mask=f"0x{config.layer_4.tcp.src_port.mask}",
+                    mask=f"{config.layer_4.tcp.src_port.mask}",
             )
             yield self.basic_mode.tcp.dest_port.set(
                     use=config.layer_4.tcp.dest_port.use,
                     value=config.layer_4.tcp.dest_port.value,
-                    mask=f"0x{config.layer_4.tcp.dest_port.mask}",
+                    mask=f"{config.layer_4.tcp.dest_port.mask}",
             )
         elif not config.layer_4.udp.is_off:
             yield self.basic_mode.udp.settings.set(use=config.layer_4.udp.filter_use, action=config.layer_4.udp.match_action)
             yield self.basic_mode.udp.src_port.set(
                     use=config.layer_4.udp.src_port.use,
                     value=config.layer_4.udp.src_port.value,
-                    mask=f"0x{config.layer_4.udp.src_port.mask}",
+                    mask=f"{config.layer_4.udp.src_port.mask}",
             )
             yield self.basic_mode.udp.dest_port.set(
                     use=config.layer_4.udp.dest_port.use,
                     value=config.layer_4.udp.dest_port.value,
-                    mask=f"0x{config.layer_4.udp.dest_port.mask}",
+                    mask=f"{config.layer_4.udp.dest_port.mask}",
             )
 
     def set_layer_xena(self, config: ShadowFilterConfigBasic) -> GeneratorToken:

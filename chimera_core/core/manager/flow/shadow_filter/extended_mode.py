@@ -13,10 +13,10 @@ from .__dataset import (
 )
 
 
-class ShadowFilterConfiguratorExtended:
-    def __init__(self, filter_: "FilterDefinitionShadow", extended_mode: "ModeExtendedS") -> None:
-        self.shadow_filter = filter_
-        self.extended_mode = extended_mode
+class ShadowFilterExtended:
+    def __init__(self, shadow_filter_hli: "FilterDefinitionShadow", extended_mode_hli: "ModeExtendedS") -> None:
+        self.shadow_filter = shadow_filter_hli
+        self.extended_mode = extended_mode_hli
 
     async def get_single_protocol_segment_content(self, hli_protocol_segment: HLIProtocolSegment) -> ProtocolSegement:
         value, mask = await utils.apply(
@@ -31,10 +31,10 @@ class ShadowFilterConfiguratorExtended:
             mask=mask,
         )
 
-    async def set_single_protocol_segment_content(self, protocol_segment: HLIProtocolSegment, value: str, mask: str) -> None:
+    async def set_single_protocol_segment_content(self, protocol_segment_hli: HLIProtocolSegment, value: str, mask: str) -> None:
         await utils.apply(
-            protocol_segment.value.set(value),
-            protocol_segment.mask.set(mask),
+            protocol_segment_hli.value.set(value),
+            protocol_segment_hli.mask.set(mask),
         )
 
     async def get(self) -> ShadowFilterConfigExtended:
@@ -49,7 +49,7 @@ class ShadowFilterConfiguratorExtended:
         protocol_types = await self.extended_mode.get_protocol_segments()
         await asyncio.gather(*(
             self.set_single_protocol_segment_content(
-                protocol_segment=proto,
+                protocol_segment_hli=proto,
                 value=config.protocol_segments[idx].value,
                 mask=config.protocol_segments[idx].mask,
             )

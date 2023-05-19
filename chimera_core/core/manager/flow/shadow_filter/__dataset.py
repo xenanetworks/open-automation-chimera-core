@@ -30,8 +30,8 @@ class InnerOuter:
         self.mask = mask
 
 
-def generate_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
-    return InnerOuter(use=enums.OnOff(attr.use), value=attr.value, mask=attr.mask.replace('0x', ''))
+def create_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
+    return InnerOuter(use=attr.use, value=attr.value, mask=attr.mask.replace('0x', ''))
 
 
 @dataclass

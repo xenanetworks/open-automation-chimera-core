@@ -29,6 +29,7 @@ async def main():
 
     await my_controller.add_tester(my_tester_credential)
     my_tester_info = await my_controller.list_testers()
+    logger.debug(my_tester_info)
     my_tester_info = my_tester_info[my_tester_credential.id]
 
     tester_manager = await my_controller.use(my_tester_credential, username='chimera-core', reserve=False, debug=True)
@@ -42,30 +43,30 @@ async def main():
 
     await flow.shadow_filter.reset()
 
-    extend_filter_mode = await flow.shadow_filter.use_extended_mode()
-    config = await extend_filter_mode.get()
-    logger.debug(config)
+    # extend_filter_mode = await flow.shadow_filter.use_extended_mode()
+    # config = await extend_filter_mode.get()
+    # logger.debug(config)
 
-    config.protocol_segments = config.protocol_segments[:2]
-    len(config.protocol_segments)
+    # config.protocol_segments = config.protocol_segments[:2]
+    # len(config.protocol_segments)
 
-    ethernet = dataset.ProtocolSegement(
-        protocol_type=dataset.ProtocolOption.ETHERNET,
-        value='000001111',
-        mask='1110000',
-    )
-    ipv41 = dataset.ProtocolSegement(
-        protocol_type=dataset.ProtocolOption.IP,
-        value='000001111',
-        mask='1110000',
-    )
-    ipv42 = dataset.ProtocolSegement(
-        protocol_type=dataset.ProtocolOption.IP,
-        value='000001111',
-        mask='1110000',
-    )
+    # ethernet = dataset.ProtocolSegement(
+    #     protocol_type=dataset.ProtocolOption.ETHERNET,
+    #     value='000001111',
+    #     mask='1110000',
+    # )
+    # ipv41 = dataset.ProtocolSegement(
+    #     protocol_type=dataset.ProtocolOption.IP,
+    #     value='000001111',
+    #     mask='1110000',
+    # )
+    # ipv42 = dataset.ProtocolSegement(
+    #     protocol_type=dataset.ProtocolOption.IP,
+    #     value='000001111',
+    #     mask='1110000',
+    # )
 
-    config.protocol_segments = (ethernet,ipv41,ipv42)
+    # config.protocol_segments = (ethernet,ipv41,ipv42)
 
     # # await extend_filter_mode.set(config)
     # # config = await extend_filter_mode.get()

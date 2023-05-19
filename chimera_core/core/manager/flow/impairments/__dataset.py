@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from functools import partialmethod
 from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union, Protocol
-from loguru import logger
 
+from loguru import logger
 from xoa_driver import enums
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CLatencyJitterImpairment,
@@ -62,9 +63,24 @@ TImpairmentGeneral = TypeVar(
 TypeTokenResponseOrError = Union[Exception, Any]
 
 
-class PImpairmentConfig(Protocol):
-    def apply(self, impairment: TImpairment) -> GeneratorToken:
-        ...
+class OnOffMixin:
+    on_off: enums.OnOff
+
+    def set_on_off(self, on_off: enums.OnOff) -> None:
+        self.on_off = on_off
+
+    set_on = partialmethod(set_on_off, enums.OnOff.ON)
+    set_off = partialmethod(set_on_off, enums.OnOff.OFF)
+
+
+class PolicerModeMixin:
+    mode: enums.PolicerMode
+
+    def set_control_mode(self, mode: enums.PolicerMode) -> None:
+        self.mode = mode
+
+    set_control_on_l2 = partialmethod(set_control_mode, enums.PolicerMode.L2)
+    set_control_on_l1  = partialmethod(set_control_mode, enums.PolicerMode.L1)
 
 
 @dataclass
@@ -222,7 +238,7 @@ class ImpairmentConfigGeneral(ImpairmentConfigBase):
 
 
 @dataclass
-class ImpairmentConfigPolicer:
+class ImpairmentConfigPolicer(OnOffMixin, PolicerModeMixin):
     on_off: enums.OnOff = enums.OnOff.OFF
     mode: enums.PolicerMode = enums.PolicerMode.L2
     cir: int = 0
@@ -245,9 +261,8 @@ class ImpairmentConfigPolicer:
             cbs=self.cbs,
         )
 
-
 @dataclass
-class ImpairmentConfigShaper:
+class ImpairmentConfigShaper(OnOffMixin, PolicerModeMixin):
     on_off: enums.OnOff = enums.OnOff.OFF
     mode: enums.PolicerMode = enums.PolicerMode.L2
     cir: int = 0
