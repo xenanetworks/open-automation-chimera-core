@@ -1,8 +1,6 @@
 import asyncio
 from typing import TYPE_CHECKING, Generator
 
-from xoa_driver import enums
-
 from chimera_core.core.manager.__base import ReserveMixin
 from .__dataset import ModuleConfig
 
@@ -30,14 +28,14 @@ class ModuleConfigurator:
         return ModuleConfig(
             comment=comment.comment,
             clock_ppb=clock_ppb.ppb,
-            tx_clock_source=enums.TXClockSource(tx_clock_source.tx_clock),
-            tx_clock_status=enums.TXClockStatus(tx_clock_status.status),
-            latency_mode=enums.ImpairmentLatencyMode(latency_mode.mode),
-            cfp_type=enums.MediaCFPType(cfp_type.type),
-            cfp_state=enums.MediaCFPState(cfp_type.state),
+            tx_clock_source=tx_clock_source.tx_clock,
+            tx_clock_status=tx_clock_status.status,
+            latency_mode=latency_mode.mode,
+            cfp_type=cfp_type.type,
+            cfp_state=cfp_type.state,
             port_count=cfp_config.port_count,
             port_speed=cfp_config.port_speed,
-            bypass_mode=enums.OnOff(bypass_mode.on_off),
+            bypass_mode=bypass_mode.on_off,
         )
 
     async def set(self, config: ModuleConfig) -> None:

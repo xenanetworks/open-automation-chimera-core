@@ -13,8 +13,8 @@ class ImpairmentShaper(ImpairmentManagerBase[CShaperImpairment]):
         config = await self.impairment.config.get()
 
         config = ImpairmentConfigShaper(
-            on_off=enums.OnOff(config.on_off),
-            mode=enums.PolicerMode(config.mode),
+            on_off=config.on_off,
+            mode=config.mode,
             cir=config.cir,
             cbs=config.cbs,
             buffer_size=config.buffer_size,

@@ -13,8 +13,8 @@ class ImpairmentPolicer(ImpairmentManagerBase[CPolicerImpairment]):
         config = await self.impairment.config.get()
 
         config = ImpairmentConfigPolicer(
-            on_off=enums.OnOff(config.on_off),
-            mode=enums.PolicerMode(config.mode),
+            on_off=config.on_off,
+            mode=config.mode,
             cir=config.cir,
             cbs=config.cbs,
         )

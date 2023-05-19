@@ -4,7 +4,6 @@ from typing import Generator, List, TYPE_CHECKING
 if TYPE_CHECKING:
     from xoa_driver.v2.ports import PortChimera
 
-from xoa_driver import enums
 from xoa_driver import utils
 
 from chimera_core.core.manager.__dataset import PortConfig, PortConfigLinkFlap, PortConfigPulseError
@@ -30,13 +29,13 @@ class PortConfigurator:
                 self.port.emulation.drop_fcs_errors.get(),
             ))
         link_flap = PortConfigLinkFlap(
-            enable=enums.OnOff(enable_link_flap.on_off),
+            enable=enable_link_flap.on_off,
             duration=link_flap_params.duration,
             period=link_flap_params.period,
             repetition=link_flap_params.repetition,
         )
         pulse_error = PortConfigPulseError(
-            enable=enums.OnOff(enable_pulse_error.on_off),
+            enable=enable_pulse_error.on_off,
             duration=pulse_error_params.duration,
             period=pulse_error_params.period,
             repetition=pulse_error_params.repetition,

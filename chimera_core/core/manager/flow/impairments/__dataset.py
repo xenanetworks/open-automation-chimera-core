@@ -224,7 +224,7 @@ class ImpairmentConfigGeneral(ImpairmentConfigBase):
     def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
         for distribution_name, distribution_response in validator.was_set_distributions:
             if distribution_name == 'enable':
-                self.enable = enums.OnOff(distribution_response.action)
+                self.enable = distribution_response.action
             elif distribution_name == 'schedule':
                 self.set_schedule(distribution_response)
             else:
@@ -233,9 +233,6 @@ class ImpairmentConfigGeneral(ImpairmentConfigBase):
                 self.set_distribution(distribution_config)
 
     def set_distribution(self, distribution: DistributionConfigBase) -> None:
-        logger.debug(self)
-        logger.debug(distribution.__class__.__name__)
-        logger.debug(self.allow_set_distribution_class_name)
         if distribution.__class__.__name__ not in self.allow_set_distribution_class_name:
             raise InvalidDistributionError(self.allow_set_distribution_class_name)
         self._current_distribution = distribution
