@@ -71,9 +71,8 @@ class ImpairmentManagerGeneral(ImpairmentManagerBase[TImpairmentWithDistribution
 
     def batch_read_distribution_config_commands(self) -> Dict[str, Token]:
         result = {}
-        for distribution in self.read_distribution_config_from_server:
-            if (is_supported := getattr(self.read_distribution_config_from_server, distribution.name)):
-                result[distribution.name] = getattr(self.impairment.distribution, distribution.name).get()
+        for distribution in self.read_distribution_config_from_server.enabled_distributions:
+            result[distribution.name] = getattr(self.impairment.distribution, distribution.name).get()
 
         result['enable'] = self.impairment.enable.get()
         result['schedule'] = self.impairment.schedule.get()

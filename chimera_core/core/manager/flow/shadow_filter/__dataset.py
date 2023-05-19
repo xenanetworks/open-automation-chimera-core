@@ -112,14 +112,11 @@ class ShadowFilterLayer2Plus:
         return self.mpls
 
 
-TypeIPv4 = Union[str, int, ipaddress.IPv4Address]
-
-
 @dataclass
 class ShadowFilterConfigL2IPv4Addr(InnerOuter):
-    value: TypeIPv4 = '0.0.0.0'
+    value: ipaddress.IPv4Address = ipaddress.IPv4Address("0.0.0.0")
 
-    def on(self, address: TypeIPv4 = '0.0.0.0', mask: str = 'FFFFFFFF') -> None:
+    def on(self, address: ipaddress.IPv4Address = ipaddress.IPv4Address('0.0.0.0'), mask: str = 'FFFFFFFF') -> None:
         self.use = enums.OnOff.ON
         self.value = address
         self.mask = mask

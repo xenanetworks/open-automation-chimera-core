@@ -101,6 +101,10 @@ class BatchReadDistributionConfigFromServer(IterDataclassMixin):
     constant_delay: bool = False
     step: bool = False
 
+    @property
+    def enabled_distributions(self) -> Generator[Any, None, None]:
+        return (field for field in self if getattr(self, field.name))
+
 
 class DistributionResponseValidator(NamedTuple):
     """If get command return NOTVALID, the config was not being set"""
