@@ -1,3 +1,4 @@
+from typing import Union
 from xoa_driver import enums
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import (
     FilterDefinitionShadow,
@@ -31,6 +32,14 @@ class ShadowFilterManager:
         assert isinstance(mode, ModeExtendedS), "Not extended mode"
         return ShadowFilterExtended(self.filter, mode)
 
+    async def get_mode(self) -> Union["ShadowFilterBasic", "ShadowFilterExtended"]:
+        hli_mode = await self.filter.get_mode()
+        mode = {
+            ModeBasic: ShadowFilterBasic,
+            ModeExtendedS: ShadowFilterExtended,
+        }[type(hli_mode)]
+        return mode(self.filter, hli_mode)
+
     async def enable(self) -> None:
         await self.filter.enable.set(enums.OnOff.ON)
 
@@ -44,3 +53,6 @@ class ShadowFilterManager:
     async def cancel(self) -> None:
         """cancel changes made to shadow and restore config from working"""
         await self.filter.cancel.set()
+
+    async def init(self) -> None:
+        await self.filter.initiating.set()

@@ -14,10 +14,12 @@ from .shadow_filter import ShadowFilterManager
 if TYPE_CHECKING:
     from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CFlow
 
+from .__dataset import FlowConfig
+
 
 class FlowManager:
     def __init__(self, flow: "CFlow") -> None:
-        self.flow = flow
+        self.__flow = flow
         self.shadow_filter = ShadowFilterManager(flow.shadow_filter)
         self.drop = ImpairmentDrop(flow.drop)
         self.misordering = ImpairmentMisordering(flow.misordering)
@@ -26,6 +28,16 @@ class FlowManager:
         self.corruption = ImpairmentCorruption(flow.corruption)
         self.policer = ImpairmentPolicer(flow.policer)
         self.shaper = ImpairmentShaper(flow.shaper)
+
+    async def get(self) -> FlowConfig:
+        comment = (await self.__flow.comment.get()).comment
+        return FlowConfig(
+            comment=comment
+        )
+
+    async def set(self, config: FlowConfig) -> None:
+        await self.__flow.comment.set(comment=config.comment)
+
 
 
 @dataclass

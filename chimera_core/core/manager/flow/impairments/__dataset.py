@@ -206,11 +206,13 @@ class ImpairmentConfigGeneral(ImpairmentConfigBase):
             raise DistributionNotSetError()
 
     def stop(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield impairment.enable.set(enums.OnOff.OFF)
+        self.enable = enums.OnOff.OFF
+        yield impairment.enable.set(self.enable)
 
     def start(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield impairment.enable.set(self.enable)
+        self.enable = enums.OnOff.ON
         yield from self.apply_distribution(impairment)
+        yield impairment.enable.set(enums.OnOff.ON)
 
     def get_current_distribution(self) -> Optional[DistributionConfigBase]:
         return self._current_distribution
