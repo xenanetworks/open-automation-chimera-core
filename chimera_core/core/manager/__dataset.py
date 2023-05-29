@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields
 from functools import partialmethod
-from typing import Generator
+from typing import Generator, List
 
 from xoa_driver import enums
 from xoa_driver.v2.misc import Token
@@ -64,3 +64,13 @@ class PortConfig:
 
     set_emulate_on = partialmethod(set_emulate, enums.OnOff.ON)
     set_emulate_off = partialmethod(set_emulate, enums.OnOff.OFF)
+
+
+@dataclass
+class CustomDistribution:
+    distribution_type: enums.LatencyTypeCustomDist
+    linear: enums.OnOff
+    symmetric: enums.OnOff
+    entry_count: int
+    data_x: List[int] = field(default_factory=list)
+    comment: str = ''

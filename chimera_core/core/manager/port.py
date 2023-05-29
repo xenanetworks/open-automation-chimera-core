@@ -5,8 +5,12 @@ if TYPE_CHECKING:
     from xoa_driver.v2.ports import PortChimera
 
 from xoa_driver import utils
+from xoa_driver.internals.hli_v2.ports.port_l23.chimera.pe_custom_distribution import (
+    CustomDistributions as HLICustomDistributions,
+    CustomDistribution as HLICustomDistribution,
+)
 
-from chimera_core.core.manager.__dataset import PortConfig, PortConfigLinkFlap, PortConfigPulseError
+from chimera_core.core.manager.__dataset import PortConfig, PortConfigLinkFlap, PortConfigPulseError, CustomDistribution
 from chimera_core.core.manager.__base import ReserveMixin
 from chimera_core.core.manager.flow import FlowManager, FlowManagerContainer
 
@@ -76,11 +80,43 @@ class PortConfigurator:
         ))
 
 
+
+class CustomDistributionsManager:
+    def __init__(self, hli_custom_distributions: HLICustomDistributions) -> None:
+        self.hli_custom_distributions = hli_custom_distributions
+
+    async def __read_single_custom_distribution(self, cs: HLICustomDistribution) -> CustomDistribution:
+        definition, comment, distribution_type = await utils.apply(
+            cs.definition.get(),
+            cs.comment.get(),
+            cs.type.get(),
+        )
+        return CustomDistribution(
+            distribution_type=distribution_type.latency_type,
+            linear=definition.linear,
+            symmetric=definition.symmetric,
+            entry_count=definition.entry_count,
+            data_x=definition.data_x,
+            comment=comment.comment,
+        )
+
+    async def get(self) -> List[CustomDistribution]:
+        all_custom_distribution = [
+            await self.__read_single_custom_distribution(cs) for cs in self.hli_custom_distributions
+        ]
+        return all_custom_distribution
+
+    async def set(self, custom_distributions: List[CustomDistribution]) -> None:
+        await self.hli_custom_distributions.assign(len(custom_distributions))
+
+
+
 class PortManager(ReserveMixin):
     def __init__(self, port: "PortChimera") -> None:
         self.resource_instance = port
         self.config = PortConfigurator(port)
         self.flows = FlowManagerContainer([FlowManager(f) for f in port.emulation.flow])
+        self.custom_distributions = CustomDistributionsManager(port.custom_distributions)
 
     async def setup(self) -> "PortManager":
         # await self.port_instance.emulate.set_on()
