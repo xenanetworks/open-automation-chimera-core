@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, TYPE_CHECKING
+from typing import Any, List, TYPE_CHECKING
 
 from .impairments.drop import ImpairmentDrop
 from .impairments.duplication import ImpairmentDuplication
@@ -38,6 +38,9 @@ class FlowManager:
     async def set(self, config: FlowConfig) -> None:
         await self.__flow.comment.set(comment=config.comment)
 
+    @property
+    def statistics(self) -> Any:
+        return self.__flow.statistics
 
 
 @dataclass
