@@ -195,7 +195,7 @@ class ShadowFilterBasic:
     def set_layer_2_plus(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
         if config.layer_2_plus.present == enums.L2PlusPresent.NA:
             return
-        self.basic_mode.l2plus_use.set(use=config.layer_2_plus.present)
+        yield self.basic_mode.l2plus_use.set(use=config.layer_2_plus.present)
         if config.layer_2_plus.present in (enums.L2PlusPresent.VLAN1, enums.L2PlusPresent.VLAN2):
             yield self.basic_mode.vlan.settings.set(use=config.layer_2_plus.vlan.filter_use, action=config.layer_2_plus.vlan.match_action)
             yield self.basic_mode.vlan.inner.tag.set(
@@ -308,5 +308,6 @@ class ShadowFilterBasic:
                 self.set_layer_3(config),
                 self.set_layer_4(config),
                 self.set_layer_xena(config),
-            )
+            ),
+            return_exceptions=False,
         )
