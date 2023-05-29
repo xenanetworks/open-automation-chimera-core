@@ -25,4 +25,8 @@ __all__ = (
     "Message",
     "EProductType",
     "ProtocolOption",
+    "TesterManager",
+    "ModuleManager",
+    "PortManager",
+    "FlowManager",
 )
