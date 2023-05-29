@@ -24,7 +24,7 @@ class CoreExample:
     async def init_resources(self) -> None:
         self.controller = await MainController()
         await self.controller.add_tester(self.credential)
-        self.tester = await self.controller.use(self.credential, username='chimera-core-example', reserve=False, debug=True)
+        self.tester = await self.controller.use(self.credential, username='chimera-core-example', reserve=False, debug=False)
 
     async def configure_flow(self, flow: dataset.FlowManager) -> None:
         await flow.shadow_filter.clear()
@@ -49,11 +49,11 @@ class CoreExample:
 
         drop_config = await flow.drop.get()
         # fixed_burst = distributions.drop.FixedBurst(burst_size=5) # short or long api
-        # fixed_burst = distributions.distribution_options_drop.FixedBurst(burst_size=5) # short or long api
-        # fixed_burst.repeat(5)
-        custom = distributions.distribution_options_drop.Custom(cust_id=1) # short or long api
-        custom.repeat_pattern(duration=10000, period=10000)
-        drop_config.set_distribution(custom)
+        fixed_burst = distributions.distribution_options_drop.FixedBurst(burst_size=5) # short or long api
+        fixed_burst.repeat(5)
+        # custom = distributions.distribution_options_drop.Custom(cust_id=1) # short or long api
+        # custom.repeat_pattern(duration=10000, period=10000)
+        drop_config.set_distribution(fixed_burst)
         await flow.drop.start(drop_config)
 
         latency_jitter_config = await flow.latency_jitter.get()
@@ -95,8 +95,8 @@ class CoreExample:
         await self.toogle_port_emulate(module_id=self.module_id, port_id=self.port_id, is_set_on=False)
 
     async def collect_data(self) -> None:
-        while self.stop_event.wait():
-            flow = await self.__use_flow(self.flow_id)
+        flow = await self.__use_flow(self.flow_id)
+        while not self.stop_event.is_set():
             rx = await flow.statistics.rx.total.get()
             drop = await flow.statistics.total.dropped.get()
             logger.debug(f"total received packet: {rx.packet_count}, total dropped: {drop.pkt_drop_count_total}")
