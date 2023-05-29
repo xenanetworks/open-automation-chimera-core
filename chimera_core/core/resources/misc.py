@@ -6,6 +6,7 @@ from typing import (
 from pydantic import SecretStr
 from xoa_driver.v2 import testers
 from .datasets import enums
+from loguru import logger
 
 class IProps(Protocol):
     id: str
@@ -27,4 +28,6 @@ def get_tester_inst(props: IProps, username: str = "xoa-manager", debug=False) -
         username=username,
         password=props.password.get_secret_value(),
         port=props.port,
+        enable_logging=debug,
+        custom_logger=logger if debug else None,
     ) if tester_type else None
