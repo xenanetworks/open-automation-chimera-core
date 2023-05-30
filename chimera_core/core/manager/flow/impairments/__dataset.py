@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import partialmethod
 from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union, Protocol
 
@@ -31,6 +31,7 @@ from chimera_core.core.manager.flow.distributions.__dataset import (
     ConstantDelay,
     DistributionConfigBase,
     TImpairmentWithDistribution,
+    ScheduleMixin,
 )
 from chimera_core.core.manager.__dataset import IterDataclassMixin, GeneratorToken
 from chimera_core.core.manager.exception import InvalidDistributionError
@@ -133,31 +134,6 @@ class DistributionResponseValidator(NamedTuple):
                 yield command_name, command_response
 
 
-@dataclass
-class Schedule:
-    duration: int = 0
-    period: int = 0
-
-    def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield impairment.schedule.set(duration=self.duration, period=self.period)
-
-
-@dataclass
-class DistributionWithNonBurstSchedule(DistributionConfigBase):
-    schedule: Schedule = field(default_factory=Schedule)
-
-    def continuous(self) -> None:
-        self.duration = 1
-        self.period = 0
-
-    def repeat_pattern(self, duration: int, period: int) -> None:
-        self.duration = duration
-        self.period = period
-
-    def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield from self.schedule.apply(impairment)
-
-
 distribution_class: Dict[str, Type[DistributionConfigBase]] = {
     'fixed_burst': FixedBurst,
     'random_burst': RandomBurst,
@@ -218,10 +194,8 @@ class ImpairmentConfigGeneral(ImpairmentConfigBase):
         return self._current_distribution
 
     def set_schedule(self, schedule_respsonse: Any) -> None:
-        if (distribution := self.get_current_distribution()) \
-            and isinstance(distribution, DistributionWithNonBurstSchedule):
-            distribution.schedule.duration = schedule_respsonse.duration
-            distribution.schedule.period = schedule_respsonse.period
+        if (distribution := self.get_current_distribution()) and isinstance(distribution, ScheduleMixin):
+            distribution.set_schedule(duration=schedule_respsonse.duration, period=schedule_respsonse.period)
 
     def load_value_from_server_response(self, validator: DistributionResponseValidator) -> None:
         for distribution_name, distribution_response in validator.was_set_distributions:

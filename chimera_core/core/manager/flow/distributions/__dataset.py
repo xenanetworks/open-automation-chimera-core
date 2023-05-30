@@ -55,24 +55,32 @@ class DistributionConfigBase(ABC, IterDataclassMixin):
 
 @dataclass
 class Schedule:
-    duration: int = 0
-    period: int = 0
+    duration: int
+    period: int
 
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         yield impairment.schedule.set(duration=self.duration, period=self.period)
 
 
+class ScheduleMixin:
+    schedule: Schedule
+
+    def set_schedule(self, duration: int, period: int) -> None:
+        if not hasattr(self, 'schedule'):
+            self.schedule = Schedule(duration=duration, period=period)
+        else:
+            self.schedule.duration = duration
+            self.schedule.period = period
+
 @dataclass
-class DistributionWithBurstSchedule(DistributionConfigBase):
-    schedule: Schedule = field(default_factory=Schedule)
+class DistributionWithBurstSchedule(DistributionConfigBase, ScheduleMixin):
+    schedule: Schedule = field(init=False)
 
     def one_shot(self) -> None:
-        self.schedule.duration = 1
-        self.schedule.period = 0
+        self.set_schedule(duration=1, period=0)
 
     def repeat(self, period: int) -> None:
-        self.schedule.duration = 1
-        self.schedule.period = period
+        self.set_schedule(duration=1, period=period)
 
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         yield from self.schedule.apply(impairment)
@@ -87,16 +95,14 @@ class DistributionWithFixedContinuousSchedule(DistributionConfigBase):
 
 
 @dataclass
-class DistributionWithNonBurstSchedule(DistributionConfigBase):
-    schedule: Schedule = field(default_factory=Schedule)
+class DistributionWithNonBurstSchedule(DistributionConfigBase, ScheduleMixin):
+    schedule: Schedule = field(init=False)
 
     def continuous(self) -> None:
-        self.duration = 1
-        self.period = 0
+        self.set_schedule(duration=1, period=0)
 
     def repeat_pattern(self, duration: int, period: int) -> None:
-        self.duration = duration
-        self.period = period
+        self.set_schedule(duration=duration, period=period)
 
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         yield from self.schedule.apply(impairment)
