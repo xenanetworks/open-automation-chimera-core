@@ -1,10 +1,12 @@
 import asyncio
+from loguru import logger
 from typing import Generator, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from xoa_driver.v2.ports import PortChimera
 
 from xoa_driver import utils
+from xoa_driver.enums import OnOff
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.pe_custom_distribution import (
     CustomDistributions as HLICustomDistributions,
     CustomDistribution as HLICustomDistribution,
@@ -92,6 +94,7 @@ class CustomDistributionsManager:
             cs.type.get(),
         )
         return CustomDistribution(
+            custom_distribution_index=cs.custom_distribution_index,
             distribution_type=distribution_type.latency_type,
             linear=definition.linear,
             symmetric=definition.symmetric,
@@ -102,13 +105,34 @@ class CustomDistributionsManager:
 
     async def get(self) -> List[CustomDistribution]:
         all_custom_distribution = [
-            await self.__read_single_custom_distribution(cs) for cs in self.hli_custom_distributions
+            await self.__read_single_custom_distribution(cs) for cs in self.hli_custom_distributions.values()
         ]
         return all_custom_distribution
 
-    async def set(self, custom_distributions: List[CustomDistribution]) -> None:
-        await self.hli_custom_distributions.assign(len(custom_distributions))
+    # async def set(self, custom_distributions: List[CustomDistribution]) -> None:
+    #     await self.hli_custom_distributions.assign(len(custom_distributions))
+    #     for index, cd in enumerate(custom_distributions):
+    #         await self.set_single_distribution(index, cd)
 
+    async def set_single_distribution(self, index: int, cd: CustomDistribution) -> None:
+        hli_cd = self.hli_custom_distributions[index]
+        await hli_cd.comment.set(cd.comment)
+        await hli_cd.definition.set(
+            linear=cd.linear,
+            symmetric=cd.symmetric,
+            entry_count=cd.entry_count,
+            data_x=cd.data_x,
+        )
+
+    async def add(self, linear: bool, entry_count: int, data_x: List[int], comment: str) -> CustomDistribution:
+        cd = await self.hli_custom_distributions.add(
+            linear=OnOff(int(linear)),
+            entry_count=entry_count,
+            data_x=data_x,
+            comment=comment,
+        )
+        cd = await self.__read_single_custom_distribution(cd)
+        return cd
 
 
 class PortManager(ReserveMixin):

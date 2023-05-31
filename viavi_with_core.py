@@ -1,6 +1,5 @@
 import asyncio
-import time
-from typing import Callable, Coroutine, Generator, Optional
+from typing import Callable, Coroutine, Generator, Optional, List
 
 from loguru import logger
 
@@ -26,6 +25,17 @@ class CoreExample:
         await self.controller.add_tester(self.credential)
         self.tester = await self.controller.use(self.credential, username='chimera-core-example', reserve=False, debug=False)
 
+    async def add_custom_distribution(self, linear: bool, data_x: List[int], comment: str) -> dataset.CustomDistribution:
+        port = await self.tester.use_port(module_id=self.module_id, port_id=self.port_id, reserve=False)
+        await port.reserve_if_not()
+        cd = await port.custom_distributions.add(
+            linear=linear,
+            entry_count=len(data_x),
+            data_x=data_x,
+            comment=comment,
+        )
+        return cd
+
     async def configure_flow(self, flow: dataset.FlowManager) -> None:
         await flow.shadow_filter.clear()
         await flow.shadow_filter.init()
@@ -48,16 +58,18 @@ class CoreExample:
         await flow.shadow_filter.apply()
 
         drop_config = await flow.drop.get()
-        # fixed_burst = distributions.drop.FixedBurst(burst_size=5) # short or long api
-        fixed_burst = distributions.distribution_options_drop.FixedBurst(burst_size=5) # short or long api
+        fixed_burst = distributions.drop.FixedBurst(burst_size=5) # short or long api
         fixed_burst.repeat(5)
-        # custom = distributions.distribution_options_drop.Custom(cust_id=1) # short or long api
-        # custom.repeat_pattern(duration=10000, period=10000)
         drop_config.set_distribution(fixed_burst)
+
+        cd = await self.add_custom_distribution(linear=False, data_x=[0, 1]*256, comment="Example Custom Distribution")
+        custom = distributions.drop.Custom(cust_id=cd.custom_distribution_index)
+        custom.repeat_pattern(duration=2, period=6)
+        drop_config.set_distribution(custom)
         await flow.drop.start(drop_config)
 
         latency_jitter_config = await flow.latency_jitter.get()
-        constant_delay = distributions.distribution_options_latency_jitter.ConstantDelay(delay=100000)
+        constant_delay = distributions.latency_jitter.ConstantDelay(delay=100000)
         latency_jitter_config.set_distribution(constant_delay)
         await flow.latency_jitter.start(latency_jitter_config)
 
@@ -65,8 +77,6 @@ class CoreExample:
         await self.init_resources()
         port = await self.tester.use_port(module_id=self.module_id, port_id=self.port_id, reserve=False)
         await port.reserve_if_not()
-        # config = await port.custom_distributions.get()
-        # logger.debug(config)
         flow_one = port.flows[self.flow_id]
         await self.configure_flow(flow_one)
 

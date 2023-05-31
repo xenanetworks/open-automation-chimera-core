@@ -68,6 +68,7 @@ class PortConfig:
 
 @dataclass
 class CustomDistribution:
+    custom_distribution_index: int
     distribution_type: enums.LatencyTypeCustomDist
     linear: enums.OnOff
     symmetric: enums.OnOff

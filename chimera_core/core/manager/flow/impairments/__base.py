@@ -42,7 +42,6 @@ class ImpairmentManagerBase(Generic[TImpairmentGeneral]):
         await asyncio.gather(*config.apply(self.impairment))
 
 
-
 TImpairmentWithDistribution = TypeVar(
     'TImpairmentWithDistribution',
     CLatencyJitterImpairment,
