@@ -1,6 +1,8 @@
 import ipaddress
 from dataclasses import dataclass, field
-from typing import Any, Protocol, Tuple, Union
+from typing import Any,  Protocol, Tuple
+
+from xoa_driver.v2.misc import Hex
 
 from chimera_core.types import enums
 
@@ -12,26 +14,26 @@ TPLD_FILTERS_LENGTH = 16
 class PInnerOuterGetDataAttr(Protocol):
     use: Any
     value: int
-    mask: str
+    mask: Hex
 
 
 @dataclass
 class InnerOuter:
     use: enums.OnOff = enums.OnOff.OFF
-    mask: str = FFF_HEX
+    mask: Hex = Hex(FFF_HEX)
     value: int = 0
 
     def off(self) -> None:
         self.use = enums.OnOff.OFF
 
-    def on(self, value: int = 0, mask: str = FFF_HEX) -> None:
+    def on(self, value: int = 0, mask: Hex = Hex(FFF_HEX)) -> None:
         self.use = enums.OnOff.ON
         self.value = value
         self.mask = mask
 
 
 def create_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
-    return InnerOuter(use=attr.use, value=attr.value, mask=attr.mask.replace('0x', ''))
+    return InnerOuter(use=attr.use, value=attr.value, mask=Hex(attr.mask.replace('0x', '')))
 
 
 @dataclass
@@ -60,9 +62,9 @@ class FilterConfigCommon:
 
 @dataclass
 class ShadowFilterConfigEthernetAddr(InnerOuter):
-    value: str = '000000000000'
+    value: Hex = Hex('000000000000')
 
-    def on(self, value: str = '000000000000', mask: str = 'FFFFFFFFFFFF') -> None:
+    def on(self, value: Hex = Hex('000000000000'), mask: Hex = Hex('FFFFFFFFFFFF')) -> None:
         self.use = enums.OnOff.ON
         self.value = value
         self.mask = mask
@@ -116,7 +118,7 @@ class ShadowFilterLayer2Plus:
 class ShadowFilterConfigL2IPv4Addr(InnerOuter):
     value: ipaddress.IPv4Address = ipaddress.IPv4Address("0.0.0.0")
 
-    def on(self, address: ipaddress.IPv4Address = ipaddress.IPv4Address('0.0.0.0'), mask: str = 'FFFFFFFF') -> None:
+    def on(self, address: ipaddress.IPv4Address = ipaddress.IPv4Address('0.0.0.0'), mask: Hex = Hex('FFFFFFFF')) -> None:
         self.use = enums.OnOff.ON
         self.value = address
         self.mask = mask
@@ -136,10 +138,10 @@ class ShadowFilterConfigL3IPv4(FilterConfigCommon):
 
 @dataclass
 class ShadowFilterConfigBasicIPv6SRCADDR(InnerOuter):
-    value: str = '::'
-    mask: str = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
+    value: ipaddress.IPv6Address = ipaddress.IPv6Address('::')
+    mask: Hex = Hex('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
 
-    def on(self, value: str = '00000000000000000000000000000000', mask: str = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') -> None:
+    def on(self, value: ipaddress.IPv6Address = ipaddress.IPv6Address('::'), mask: Hex = Hex('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')) -> None:
         self.use = enums.OnOff.ON
         self.value = value
         self.mask = mask
@@ -238,10 +240,10 @@ class ShadowFilterLayerXena:
 @dataclass
 class ShadowFilterConfigAnyField(FilterConfigCommon):
     position: int = 0
-    value: str = '000000000000'
-    mask: str = 'FFFFFFFFFFFF'
+    value: Hex = Hex('000000000000')
+    mask: Hex = Hex('FFFFFFFFFFFF')
 
-    def on(self, position: int, value: str = '000000000000', mask: str = 'FFFFFFFFFFFF') -> None:
+    def on(self, position: int, value: Hex = Hex('000000000000'), mask: Hex = Hex('FFFFFFFFFFFF')) -> None:
         self.position = position
         self.value = value
         self.mask = mask

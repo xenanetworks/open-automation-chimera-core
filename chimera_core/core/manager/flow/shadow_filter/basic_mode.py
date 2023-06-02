@@ -87,12 +87,12 @@ class ShadowFilterBasic:
             match_action=ethernet.action,
             src_addr=ShadowFilterConfigEthernetAddr(
                 use=ethernet_src_addr.use,
-                value=str(ethernet_src_addr.value),
+                value=ethernet_src_addr.value,
                 mask=ethernet_src_addr.mask,
             ),
             dest_addr=ShadowFilterConfigEthernetAddr(
                 use=ethernet_dest_addr.use,
-                value=str(ethernet_dest_addr.value),
+                value=ethernet_dest_addr.value,
                 mask=ethernet_dest_addr.mask,
             ),
         )
@@ -134,12 +134,12 @@ class ShadowFilterBasic:
             match_action=ipv6.action,
             src_addr=ShadowFilterConfigBasicIPv6SRCADDR(
                 use=ipv6_src_addr.use,
-                value=str(ipv6_src_addr.value),
+                value=ipv6_src_addr.value,
                 mask=ipv6_src_addr.mask,
             ),
             dest_addr=ShadowFilterConfigBasicIPv6DESTADDR(
                 use=ipv6_dest_addr.use,
-                value=str(ipv6_dest_addr.value),
+                value=ipv6_dest_addr.value,
                 mask=ipv6_dest_addr.mask,
             ),
         )
@@ -200,37 +200,37 @@ class ShadowFilterBasic:
         if config.layer_2_plus.present in (enums.L2PlusPresent.VLAN1, enums.L2PlusPresent.VLAN2):
             yield self.basic_mode.vlan.settings.set(use=config.layer_2_plus.vlan.filter_use, action=config.layer_2_plus.vlan.match_action)
             yield self.basic_mode.vlan.inner.tag.set(
-                    use=config.layer_2_plus.vlan.tag_inner.use,
-                    value=config.layer_2_plus.vlan.tag_inner.value,
-                    mask=config.layer_2_plus.vlan.tag_inner.mask,
+                use=config.layer_2_plus.vlan.tag_inner.use,
+                value=config.layer_2_plus.vlan.tag_inner.value,
+                mask=config.layer_2_plus.vlan.tag_inner.mask,
             )
             yield self.basic_mode.vlan.inner.pcp.set(
-                    use=config.layer_2_plus.vlan.pcp_inner.use,
-                    value=config.layer_2_plus.vlan.pcp_inner.value,
-                    mask=config.layer_2_plus.vlan.pcp_inner.mask,
+                use=config.layer_2_plus.vlan.pcp_inner.use,
+                value=config.layer_2_plus.vlan.pcp_inner.value,
+                mask=config.layer_2_plus.vlan.pcp_inner.mask,
             )
             yield self.basic_mode.vlan.outer.tag.set(
-                    use=config.layer_2_plus.vlan.tag_outer.use,
-                    value=config.layer_2_plus.vlan.tag_outer.value,
-                    mask=config.layer_2_plus.vlan.tag_outer.mask,
+                use=config.layer_2_plus.vlan.tag_outer.use,
+                value=config.layer_2_plus.vlan.tag_outer.value,
+                mask=config.layer_2_plus.vlan.tag_outer.mask,
             )
             yield self.basic_mode.vlan.outer.pcp.set(
-                    use=config.layer_2_plus.vlan.pcp_outer.use,
-                    value=config.layer_2_plus.vlan.pcp_outer.value,
-                    mask=config.layer_2_plus.vlan.pcp_outer.mask,
+                use=config.layer_2_plus.vlan.pcp_outer.use,
+                value=config.layer_2_plus.vlan.pcp_outer.value,
+                mask=config.layer_2_plus.vlan.pcp_outer.mask,
             )
 
         elif config.layer_2_plus.present == enums.L2PlusPresent.MPLS:
             yield self.basic_mode.mpls.settings.set(use=config.layer_2_plus.mpls.filter_use, action=config.layer_2_plus.mpls.match_action)
             yield self.basic_mode.mpls.label.set(
-                    use=config.layer_2_plus.mpls.label.use,
-                    value=config.layer_2_plus.mpls.label.value,
-                    mask=config.layer_2_plus.mpls.label.mask,
+                use=config.layer_2_plus.mpls.label.use,
+                value=config.layer_2_plus.mpls.label.value,
+                mask=config.layer_2_plus.mpls.label.mask,
             )
             yield self.basic_mode.mpls.toc.set(
-                    use=config.layer_2_plus.mpls.toc.use,
-                    value=config.layer_2_plus.mpls.toc.value,
-                    mask=config.layer_2_plus.mpls.toc.mask,
+                use=config.layer_2_plus.mpls.toc.use,
+                value=config.layer_2_plus.mpls.toc.value,
+                mask=config.layer_2_plus.mpls.toc.mask,
             )
 
     def set_layer_3(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
@@ -238,53 +238,53 @@ class ShadowFilterBasic:
         if config.layer_3 == enums.L3PlusPresent.IP4:
             yield self.basic_mode.ip.v4.settings.set(use=config.layer_3.ipv4.filter_use, action=config.layer_3.ipv4.match_action)
             yield self.basic_mode.ip.v4.src_address.set(
-                    use=config.layer_3.ipv4.src_addr.use,
-                    value=config.layer_3.ipv4.src_addr.value,
-                    mask=config.layer_3.ipv4.src_addr.mask,
+                use=config.layer_3.ipv4.src_addr.use,
+                value=config.layer_3.ipv4.src_addr.value,
+                mask=config.layer_3.ipv4.src_addr.mask,
             )
             yield self.basic_mode.ip.v4.dest_address.set(
-                    use=config.layer_3.ipv4.dest_addr.use,
-                    value=config.layer_3.ipv4.dest_addr.value,
-                    mask=config.layer_3.ipv4.dest_addr.mask,
+                use=config.layer_3.ipv4.dest_addr.use,
+                value=config.layer_3.ipv4.dest_addr.value,
+                mask=config.layer_3.ipv4.dest_addr.mask,
             )
 
         elif config.layer_3 == enums.L3PlusPresent.IP6:
             yield self.basic_mode.ip.v6.settings.set(use=config.layer_3.ipv6.filter_use, action=config.layer_3.ipv6.match_action)
             yield self.basic_mode.ip.v6.src_address.set(
-                    use=config.layer_3.ipv6.src_addr.use,
-                    value=config.layer_3.ipv6.src_addr.value,
-                    mask=config.layer_3.ipv6.src_addr.mask,
+                use=config.layer_3.ipv6.src_addr.use,
+                value=config.layer_3.ipv6.src_addr.value,
+                mask=config.layer_3.ipv6.src_addr.mask,
             )
             yield self.basic_mode.ip.v6.dest_address.set(
-                    use=config.layer_3.ipv6.dest_addr.use,
-                    value=config.layer_3.ipv6.dest_addr.value,
-                    mask=config.layer_3.ipv6.dest_addr.mask,
+                use=config.layer_3.ipv6.dest_addr.use,
+                value=config.layer_3.ipv6.dest_addr.value,
+                mask=config.layer_3.ipv6.dest_addr.mask,
             )
 
     def set_layer_4(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
         if not config.layer_4.tcp.is_off:
             yield self.basic_mode.tcp.settings.set(use=config.layer_4.tcp.filter_use, action=config.layer_4.tcp.match_action)
             yield self.basic_mode.tcp.src_port.set(
-                    use=config.layer_4.tcp.src_port.use,
-                    value=config.layer_4.tcp.src_port.value,
-                    mask=config.layer_4.tcp.src_port.mask,
+                use=config.layer_4.tcp.src_port.use,
+                value=config.layer_4.tcp.src_port.value,
+                mask=config.layer_4.tcp.src_port.mask,
             )
             yield self.basic_mode.tcp.dest_port.set(
-                    use=config.layer_4.tcp.dest_port.use,
-                    value=config.layer_4.tcp.dest_port.value,
-                    mask=config.layer_4.tcp.dest_port.mask,
+                use=config.layer_4.tcp.dest_port.use,
+                value=config.layer_4.tcp.dest_port.value,
+                mask=config.layer_4.tcp.dest_port.mask,
             )
         elif not config.layer_4.udp.is_off:
             yield self.basic_mode.udp.settings.set(use=config.layer_4.udp.filter_use, action=config.layer_4.udp.match_action)
             yield self.basic_mode.udp.src_port.set(
-                    use=config.layer_4.udp.src_port.use,
-                    value=config.layer_4.udp.src_port.value,
-                    mask=config.layer_4.udp.src_port.mask,
+                use=config.layer_4.udp.src_port.use,
+                value=config.layer_4.udp.src_port.value,
+                mask=config.layer_4.udp.src_port.mask,
             )
             yield self.basic_mode.udp.dest_port.set(
-                    use=config.layer_4.udp.dest_port.use,
-                    value=config.layer_4.udp.dest_port.value,
-                    mask=config.layer_4.udp.dest_port.mask,
+                use=config.layer_4.udp.dest_port.use,
+                value=config.layer_4.udp.dest_port.value,
+                mask=config.layer_4.udp.dest_port.mask,
             )
 
     def set_layer_xena(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
@@ -296,9 +296,9 @@ class ShadowFilterBasic:
         if not config.layer_any.any_field.is_off:
             yield self.basic_mode.any.settings.set(use=config.layer_any.any_field.filter_use, action=config.layer_any.any_field.match_action)
             yield self.basic_mode.any.config.set(
-                    position=config.layer_any.any_field.position,
-                    value=config.layer_any.any_field.value,
-                    mask=config.layer_any.any_field.mask,
+                position=config.layer_any.any_field.position,
+                value=config.layer_any.any_field.value,
+                mask=config.layer_any.any_field.mask,
             )
 
     async def set(self, config: ShadowFilterConfigBasic) -> None:
