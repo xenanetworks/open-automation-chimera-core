@@ -4,7 +4,7 @@ from functools import partialmethod
 from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union, Protocol
 
 from loguru import logger
-from xoa_driver import enums
+from chimera_core.types import enums
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CLatencyJitterImpairment,
     CDropImpairment,

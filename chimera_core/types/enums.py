@@ -17,6 +17,8 @@ from xoa_driver.enums import (
     SyncStatus,
     PortSpeedMode,
     ReservedStatus,
+    TPLDMode,
+    ProtocolOption,
 )
 
 __all__ = (
@@ -38,4 +40,6 @@ __all__ = (
     "SyncStatus",
     "PortSpeedMode",
     "ReservedStatus",
+    "TPLDMode",
+    "ProtocolOption",
 )

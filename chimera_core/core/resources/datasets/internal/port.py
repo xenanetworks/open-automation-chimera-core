@@ -8,11 +8,12 @@ from typing import (
     Any,
 )
 from dataclasses import dataclass, field
+
 from xoa_driver.v2 import ports
-from xoa_driver import enums
 from xoa_driver import utils
 
 from chimera_core.core.utils import decorators
+from chimera_core.types import enums
 
 P = TypeVar("P", bound="PortModel")
 

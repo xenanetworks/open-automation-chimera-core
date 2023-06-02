@@ -2,7 +2,7 @@ from dataclasses import dataclass, field, fields
 from functools import partialmethod
 from typing import Generator, List
 
-from xoa_driver import enums
+from chimera_core.types import enums
 from xoa_driver.v2.misc import Token
 
 

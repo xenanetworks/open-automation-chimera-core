@@ -3,7 +3,8 @@ from itertools import chain
 
 from loguru import logger
 
-from xoa_driver import enums, utils
+from xoa_driver import utils
+from chimera_core.types import enums
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 

@@ -2,7 +2,7 @@ import ipaddress
 from dataclasses import dataclass, field
 from typing import Any, Protocol, Tuple, Union
 
-from xoa_driver import enums
+from chimera_core.types import enums
 
 
 FFF_HEX = 'FFF'
@@ -275,12 +275,11 @@ class ShadowFilterConfigBasic:
 
 
 
-ProtocolOption = enums.ProtocolOption
 
 
 @dataclass
 class ProtocolSegement:
-    protocol_type: ProtocolOption
+    protocol_type: enums.ProtocolOption
     value: str
     mask: str
 
