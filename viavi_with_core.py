@@ -22,8 +22,8 @@ class CoreExample:
 
     async def init_resources(self) -> None:
         self.controller = await MainController()
-        await self.controller.add_tester(self.credential)
-        self.tester = await self.controller.use(self.credential, username='chimera-core-example', reserve=False, debug=False)
+        tester_id = await self.controller.add_tester(self.credential)
+        self.tester = await self.controller.use(tester_id, username='chimera-core-example', reserve=False, debug=True)
 
     async def add_custom_distribution(self, linear: bool, data_x: List[int], comment: str) -> dataset.CustomDistribution:
         port = await self.tester.use_port(module_id=self.module_id, port_id=self.port_id, reserve=False)
@@ -39,6 +39,7 @@ class CoreExample:
     async def configure_flow(self, flow: dataset.FlowManager) -> None:
         await flow.shadow_filter.clear()
         await flow.shadow_filter.init()
+        # await flow.shadow_filter.apply()
         flow_config = await flow.get()
         flow_config.comment = "On VLAN 20"
         await flow.set(flow_config)
@@ -49,7 +50,7 @@ class CoreExample:
         ethernet.src_addr.off()
         vlan_tag = basic_filter_config.layer_2_plus.use_1_vlan_tag()
         vlan_tag.include()
-        vlan_tag.tag_inner.on(value=20, mask="0FFF")
+        vlan_tag.tag_inner.on(value=20, mask=dataset.Hex("0FFF"))
         vlan_tag.pcp_inner.off()
         vlan_tag.tag_outer.off()
         vlan_tag.pcp_inner.off()
@@ -90,9 +91,9 @@ class CoreExample:
         return port
 
     async def start(self) -> None:
-        await self.toogle_port_emulate(module_id=self.module_id, port_id=self.port_id, is_set_on=True)
+        await self.toggle_port_emulate(module_id=self.module_id, port_id=self.port_id, is_set_on=True)
 
-    async def toogle_port_emulate(self, module_id: int, port_id: int, is_set_on: bool = False) -> None:
+    async def toggle_port_emulate(self, module_id: int, port_id: int, is_set_on: bool = False) -> None:
         port = await self.__use_port(module_id=module_id, port_id=port_id, reserve=True)
         port_config = await port.config.get()
         if is_set_on:
@@ -102,7 +103,7 @@ class CoreExample:
         await port.config.set(port_config)
 
     async def stop(self) -> None:
-        await self.toogle_port_emulate(module_id=self.module_id, port_id=self.port_id, is_set_on=False)
+        await self.toggle_port_emulate(module_id=self.module_id, port_id=self.port_id, is_set_on=False)
 
     async def collect_data(self) -> None:
         flow = await self.__use_flow(self.flow_id)
