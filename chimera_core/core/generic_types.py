@@ -13,7 +13,7 @@ from typing import (
 
 if TYPE_CHECKING:
     import asyncio
-    # from xoa_driver import testers
+    # from xoa_driver.v2 import testers
     from functools import partialmethod
     # from valhalla_core.core.test_suites.datasets import PluginData
 
