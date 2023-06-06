@@ -1,6 +1,6 @@
 from abc import ABC, abstractclassmethod
 from dataclasses import dataclass, field
-from typing import Any, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union, TYPE_CHECKING
 from loguru import logger
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
@@ -13,6 +13,10 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CShaperImpairment,
 )
 from chimera_core.core.manager.__dataset import IterDataclassMixin, GeneratorToken
+if TYPE_CHECKING:
+    from chimera_core.types.dataset import (
+        CustomDistribution
+    )
 
 
 
@@ -218,10 +222,13 @@ class Poisson(DistributionWithNonBurstSchedule):
 
 @dataclass
 class Custom(DistributionWithNonBurstSchedule):
-    cust_id: int = 0
+    custom_distribution: Optional["CustomDistribution"] = None
+    cust_id: Optional[int] = None
 
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield impairment.distribution.custom.set(cust_id=self.cust_id)
+        cust_id = self.custom_distribution.custom_distribution_index if self.custom_distribution else self.cust_id
+        assert cust_id
+        yield impairment.distribution.custom.set(cust_id=cust_id)
         yield from super().apply(impairment)
 
 
