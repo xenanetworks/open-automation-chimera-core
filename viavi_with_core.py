@@ -1,5 +1,6 @@
 import asyncio
-from typing import Callable, Coroutine, Generator, Optional, List
+from functools import partial
+from typing import List
 
 from loguru import logger
 
@@ -24,9 +25,10 @@ class CoreExample:
         self.controller = await MainController()
         tester_id = await self.controller.add_tester(self.credential)
         self.tester = await self.controller.use(tester_id, username='chimera-core-example', reserve=False, debug=False)
+        self.__use_example_port = partial(self.tester.use_port, module_id=self.module_id, port_id=self.port_id)
 
     async def add_custom_distribution(self, linear: bool, data_x: List[int], comment: str) -> dataset.CustomDistribution:
-        port = await self.tester.use_port(module_id=self.module_id, port_id=self.port_id, reserve=False)
+        port = await self.__use_example_port(reserve=False)
         await port.reserve_if_not()
         cd = await port.custom_distributions.add(
             linear=linear,
@@ -63,7 +65,11 @@ class CoreExample:
         fixed_burst.repeat(5)
         drop_config.set_distribution(fixed_burst)
 
-        example_custom_distribution = await self.add_custom_distribution(linear=False, data_x=[0, 1]*256, comment="Example Custom Distribution")
+        example_custom_distribution = await self.add_custom_distribution(
+            linear=False,
+            data_x=[0, 1] * 256,
+            comment="Example Custom Distribution"
+        )
         custom = distributions.drop.Custom(custom_distribution=example_custom_distribution)
         custom.repeat_pattern(duration=2, period=6)
         drop_config.set_distribution(custom)
@@ -76,25 +82,21 @@ class CoreExample:
 
     async def configure_resources(self) -> None:
         await self.init_resources()
-        port = await self.tester.use_port(module_id=self.module_id, port_id=self.port_id, reserve=False)
+        port = await self.__use_example_port(reserve=False)
         await port.reserve_if_not()
         flow_one = port.flows[self.flow_id]
         await self.configure_flow(flow_one)
 
     async def __use_flow(self, flow_id: int) -> dataset.FlowManager:
-        port = await self.__use_port(module_id=self.module_id, port_id=self.port_id, reserve=True)
+        port = await self.__use_example_port(reserve=True)
         flow = port.flows[flow_id]
         return flow
 
-    async def __use_port(self, module_id: int, port_id: int, reserve: bool = False) -> dataset.PortManager:
-        port = await self.tester.use_port(module_id=module_id, port_id=port_id, reserve=reserve)
-        return port
-
     async def start(self) -> None:
-        await self.toggle_port_emulate(module_id=self.module_id, port_id=self.port_id, is_set_on=True)
+        await self.toggle_port_emulate(is_set_on=True)
 
-    async def toggle_port_emulate(self, module_id: int, port_id: int, is_set_on: bool = False) -> None:
-        port = await self.__use_port(module_id=module_id, port_id=port_id, reserve=True)
+    async def toggle_port_emulate(self, is_set_on: bool = False) -> None:
+        port = await self.__use_example_port(reserve=True)
         port_config = await port.config.get()
         if is_set_on:
             port_config.set_emulate_on()
@@ -103,7 +105,7 @@ class CoreExample:
         await port.config.set(port_config)
 
     async def stop(self) -> None:
-        await self.toggle_port_emulate(module_id=self.module_id, port_id=self.port_id, is_set_on=False)
+        await self.toggle_port_emulate(is_set_on=False)
 
     async def collect_data(self) -> None:
         flow = await self.__use_flow(self.flow_id)
