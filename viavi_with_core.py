@@ -23,7 +23,7 @@ class CoreExample:
     async def init_resources(self) -> None:
         self.controller = await MainController()
         tester_id = await self.controller.add_tester(self.credential)
-        self.tester = await self.controller.use(tester_id, username='chimera-core-example', reserve=False, debug=True)
+        self.tester = await self.controller.use(tester_id, username='chimera-core-example', reserve=False, debug=False)
 
     async def add_custom_distribution(self, linear: bool, data_x: List[int], comment: str) -> dataset.CustomDistribution:
         port = await self.tester.use_port(module_id=self.module_id, port_id=self.port_id, reserve=False)
@@ -51,9 +51,9 @@ class CoreExample:
         vlan_tag = basic_filter_config.layer_2_plus.use_1_vlan_tag()
         vlan_tag.include()
         vlan_tag.tag_inner.on(value=20, mask=dataset.Hex("0FFF"))
-        vlan_tag.pcp_inner.off()
-        vlan_tag.tag_outer.off()
-        vlan_tag.pcp_inner.off()
+        vlan_tag.pcp_inner.off(value=0, mask=dataset.Hex("07"))
+        vlan_tag.tag_outer.off(value=20, mask=dataset.Hex("0FFF"))
+        vlan_tag.pcp_inner.off(value=0, mask=dataset.Hex("07"))
         await basic_filter.set(basic_filter_config)
         await flow.shadow_filter.enable()
         await flow.shadow_filter.apply()
@@ -63,8 +63,8 @@ class CoreExample:
         fixed_burst.repeat(5)
         drop_config.set_distribution(fixed_burst)
 
-        cd = await self.add_custom_distribution(linear=False, data_x=[0, 1]*256, comment="Example Custom Distribution")
-        custom = distributions.drop.Custom(cust_id=cd.custom_distribution_index)
+        example_custom_distribution = await self.add_custom_distribution(linear=False, data_x=[0, 1]*256, comment="Example Custom Distribution")
+        custom = distributions.drop.Custom(custom_distribution=example_custom_distribution)
         custom.repeat_pattern(duration=2, period=6)
         drop_config.set_distribution(custom)
         await flow.drop.start(drop_config)
