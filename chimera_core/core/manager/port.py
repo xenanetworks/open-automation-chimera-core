@@ -1,6 +1,6 @@
 import asyncio
 from loguru import logger
-from typing import Generator, List, TYPE_CHECKING
+from typing import Dict, Generator, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from xoa_driver.v2.ports import PortChimera
@@ -103,18 +103,15 @@ class CustomDistributionsManager:
             comment=comment.comment,
         )
 
-    async def get(self) -> List[CustomDistribution]:
-        all_custom_distribution = [
-            await self.__read_single_custom_distribution(cs) for cs in self.hli_custom_distributions.values()
-        ]
+    async def get(self) -> Dict[int, CustomDistribution]:
+        await self.hli_custom_distributions.server_sync()
+        all_custom_distribution = {
+            idx: await self.__read_single_custom_distribution(cd_hli) for idx, cd_hli in self.hli_custom_distributions.items()
+        }
         return all_custom_distribution
 
-    # async def set(self, custom_distributions: List[CustomDistribution]) -> None:
-    #     await self.hli_custom_distributions.assign(len(custom_distributions))
-    #     for index, cd in enumerate(custom_distributions):
-    #         await self.set_single_distribution(index, cd)
-
     async def set_single_distribution(self, index: int, cd: CustomDistribution) -> None:
+        await self.hli_custom_distributions.server_sync()
         hli_cd = self.hli_custom_distributions[index]
         await hli_cd.comment.set(cd.comment)
         await hli_cd.definition.set(
