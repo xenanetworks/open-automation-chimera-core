@@ -18,13 +18,15 @@ class PInnerOuterGetDataAttr(Protocol):
 
 
 @dataclass
-class InnerOuter:
+class ProtocolConfigCommon:
     use: enums.OnOff = enums.OnOff.OFF
     mask: Hex = Hex(FFF_HEX)
     value: int = 0
 
-    def off(self) -> None:
+    def off(self, value: int = 0, mask: Hex = Hex('0FFF')) -> None:
         self.use = enums.OnOff.OFF
+        self.value = value
+        self.mask = mask
 
     def on(self, value: int = 0, mask: Hex = Hex(FFF_HEX)) -> None:
         self.use = enums.OnOff.ON
@@ -32,8 +34,8 @@ class InnerOuter:
         self.mask = mask
 
 
-def create_inner_outer(attr: PInnerOuterGetDataAttr) -> InnerOuter:
-    return InnerOuter(use=attr.use, value=attr.value, mask=Hex(attr.mask.replace('0x', '')))
+def create_protocol_config_common(attr: PInnerOuterGetDataAttr) -> ProtocolConfigCommon:
+    return ProtocolConfigCommon(use=attr.use, value=attr.value, mask=Hex(attr.mask.replace('0x', '')))
 
 
 @dataclass
@@ -61,7 +63,7 @@ class FilterConfigCommon:
 
 
 @dataclass
-class ShadowFilterConfigEthernetAddr(InnerOuter):
+class ShadowFilterConfigEthernetAddr(ProtocolConfigCommon):
     value: Hex = Hex('000000000000')
 
     def on(self, value: Hex = Hex('000000000000'), mask: Hex = Hex('FFFFFFFFFFFF')) -> None:
@@ -71,51 +73,51 @@ class ShadowFilterConfigEthernetAddr(InnerOuter):
 
 
 @dataclass
-class ShadowFilterConfigEthernet(FilterConfigCommon):
+class FilterProtocolEthernet(FilterConfigCommon):
     src_addr: ShadowFilterConfigEthernetAddr = field(default_factory=ShadowFilterConfigEthernetAddr)
     dest_addr: ShadowFilterConfigEthernetAddr = field(default_factory=ShadowFilterConfigEthernetAddr)
 
 
 @dataclass
-class ShadowFilterConfigL2VLAN(FilterConfigCommon):
+class FilterProtocolL2VLAN(FilterConfigCommon):
     # inner
-    tag_inner: InnerOuter = field(default_factory=InnerOuter)
-    pcp_inner: InnerOuter = field(default_factory=InnerOuter)
+    tag_inner: ProtocolConfigCommon = field(default_factory=ProtocolConfigCommon)
+    pcp_inner: ProtocolConfigCommon = field(default_factory=ProtocolConfigCommon)
     # outer
-    tag_outer: InnerOuter = field(default_factory=InnerOuter)
-    pcp_outer: InnerOuter = field(default_factory=InnerOuter)
+    tag_outer: ProtocolConfigCommon = field(default_factory=ProtocolConfigCommon)
+    pcp_outer: ProtocolConfigCommon = field(default_factory=ProtocolConfigCommon)
 
 
 @dataclass
-class ShadowFilterConfigL2MPLS(FilterConfigCommon):
-    label: InnerOuter = field(default_factory=InnerOuter)
-    toc: InnerOuter = field(default_factory=InnerOuter)
+class FilterProtocolL2MPLS(FilterConfigCommon):
+    label: ProtocolConfigCommon = field(default_factory=ProtocolConfigCommon)
+    toc: ProtocolConfigCommon = field(default_factory=ProtocolConfigCommon)
 
 
 @dataclass
-class ShadowFilterLayer2Plus:
+class FilterLayer2Plus:
     present: enums.L2PlusPresent = enums.L2PlusPresent.NA
-    vlan: ShadowFilterConfigL2VLAN = field(default_factory=ShadowFilterConfigL2VLAN)
-    mpls: ShadowFilterConfigL2MPLS = field(default_factory=ShadowFilterConfigL2MPLS)
+    vlan: FilterProtocolL2VLAN = field(default_factory=FilterProtocolL2VLAN)
+    mpls: FilterProtocolL2MPLS = field(default_factory=FilterProtocolL2MPLS)
 
     def use_none(self) -> None:
         self.present = enums.L2PlusPresent.NA
 
-    def use_1_vlan_tag(self) -> ShadowFilterConfigL2VLAN:
+    def use_1_vlan_tag(self) -> FilterProtocolL2VLAN:
         self.present = enums.L2PlusPresent.VLAN1
         return self.vlan
 
-    def use_2_vlan_tags(self) -> ShadowFilterConfigL2VLAN:
+    def use_2_vlan_tags(self) -> FilterProtocolL2VLAN:
         self.present = enums.L2PlusPresent.VLAN2
         return self.vlan
 
-    def use_mpls(self) -> ShadowFilterConfigL2MPLS:
+    def use_mpls(self) -> FilterProtocolL2MPLS:
         self.present = enums.L2PlusPresent.MPLS
         return self.mpls
 
 
 @dataclass
-class ShadowFilterConfigL2IPv4Addr(InnerOuter):
+class FilterProtocolL3IPv4Addr(ProtocolConfigCommon):
     value: ipaddress.IPv4Address = ipaddress.IPv4Address("0.0.0.0")
 
     def on(self, address: ipaddress.IPv4Address = ipaddress.IPv4Address('0.0.0.0'), mask: Hex = Hex('FFFFFFFF')) -> None:
@@ -125,19 +127,19 @@ class ShadowFilterConfigL2IPv4Addr(InnerOuter):
 
 
 @dataclass
-class ShadowFilterConfigL2IPv4DSCP(InnerOuter):
+class FilterProtocolL3IPv4DSCP(ProtocolConfigCommon):
     pass
 
 
 @dataclass
-class ShadowFilterConfigL3IPv4(FilterConfigCommon):
-    src_addr: ShadowFilterConfigL2IPv4Addr = field(default_factory=ShadowFilterConfigL2IPv4Addr)
-    dest_addr: ShadowFilterConfigL2IPv4Addr = field(default_factory=ShadowFilterConfigL2IPv4Addr)
-    dscp: ShadowFilterConfigL2IPv4DSCP = field(default_factory=ShadowFilterConfigL2IPv4DSCP)
+class FilterProtocolL3IPv4(FilterConfigCommon):
+    src_addr: FilterProtocolL3IPv4Addr = field(default_factory=FilterProtocolL3IPv4Addr)
+    dest_addr: FilterProtocolL3IPv4Addr = field(default_factory=FilterProtocolL3IPv4Addr)
+    dscp: FilterProtocolL3IPv4DSCP = field(default_factory=FilterProtocolL3IPv4DSCP)
 
 
 @dataclass
-class ShadowFilterConfigBasicIPv6SRCADDR(InnerOuter):
+class ShadowFilterConfigBasicIPv6SRCADDR(ProtocolConfigCommon):
     value: ipaddress.IPv6Address = ipaddress.IPv6Address('::')
     mask: Hex = Hex('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')
 
@@ -153,62 +155,62 @@ class ShadowFilterConfigBasicIPv6DESTADDR(ShadowFilterConfigBasicIPv6SRCADDR):
 
 
 @dataclass
-class ShadowFilterConfigL3IPv6(FilterConfigCommon):
+class FilterProtocolL3IPv6(FilterConfigCommon):
     src_addr: ShadowFilterConfigBasicIPv6SRCADDR = field(default_factory=ShadowFilterConfigBasicIPv6SRCADDR)
     dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = field(default_factory=ShadowFilterConfigBasicIPv6DESTADDR)
 
 
 @dataclass
-class ShadowFilterLayer3:
+class FilterLayer3:
     present: enums.L3PlusPresent = enums.L3PlusPresent.NA
-    ipv4: ShadowFilterConfigL3IPv4 = field(default_factory=ShadowFilterConfigL3IPv4)
-    ipv6: ShadowFilterConfigL3IPv6 = field(default_factory=ShadowFilterConfigL3IPv6)
+    ipv4: FilterProtocolL3IPv4 = field(default_factory=FilterProtocolL3IPv4)
+    ipv6: FilterProtocolL3IPv6 = field(default_factory=FilterProtocolL3IPv6)
 
     def use_none(self) -> None:
         self.present = enums.L3PlusPresent.NA
 
-    def use_ipv4(self) -> ShadowFilterConfigL3IPv4:
+    def use_ipv4(self) -> FilterProtocolL3IPv4:
         self.present = enums.L3PlusPresent.IP4
         return self.ipv4
 
-    def use_ipv6(self) -> ShadowFilterConfigL3IPv6:
+    def use_ipv6(self) -> FilterProtocolL3IPv6:
         self.present = enums.L3PlusPresent.IP6
         return self.ipv6
 
 
 @dataclass
-class ShadowFilterConfigL4UDPSRCPort(InnerOuter):
+class ShadowFilterConfigL4UDPSRCPort(ProtocolConfigCommon):
     pass
 
 
 @dataclass
-class ShadowFilterConfigL4UDPDESTPort(InnerOuter):
+class ShadowFilterConfigL4UDPDESTPort(ProtocolConfigCommon):
     pass
 
 
 @dataclass
-class ShadowFilterConfigL4TCP(FilterConfigCommon):
-    src_port: InnerOuter = field(default_factory=InnerOuter)
-    dest_port: InnerOuter = field(default_factory=InnerOuter)
+class FilterProtocolL4TCP(FilterConfigCommon):
+    src_port: ProtocolConfigCommon = field(default_factory=ProtocolConfigCommon)
+    dest_port: ProtocolConfigCommon = field(default_factory=ProtocolConfigCommon)
 
 
 @dataclass
-class ShadowFilterConfigL4UDP(ShadowFilterConfigL4TCP):
+class FilterProtocolL4UDP(FilterProtocolL4TCP):
     pass
 
 
 @dataclass
-class ShadowFilterLayer4:
-    tcp: ShadowFilterConfigL4TCP = field(default_factory=ShadowFilterConfigL4TCP)
-    udp: ShadowFilterConfigL4UDP = field(default_factory=ShadowFilterConfigL4UDP)
+class FilterLayer4:
+    tcp: FilterProtocolL4TCP = field(default_factory=FilterProtocolL4TCP)
+    udp: FilterProtocolL4UDP = field(default_factory=FilterProtocolL4UDP)
 
     def use_none(self) -> None:
         pass
 
-    def use_tcp(self) -> ShadowFilterConfigL4TCP:
+    def use_tcp(self) -> FilterProtocolL4TCP:
         return self.tcp
 
-    def use_udp(self) -> ShadowFilterConfigL4UDP:
+    def use_udp(self) -> FilterProtocolL4UDP:
         return self.udp
 
 
@@ -224,21 +226,21 @@ class ShadowFilterConfigTPLDID:
 
 
 @dataclass
-class ShadowFilterConfigTPLD(FilterConfigCommon):
+class FilterProtocolTPLD(FilterConfigCommon):
     configs: Tuple[ShadowFilterConfigTPLDID, ...] = tuple(ShadowFilterConfigTPLDID(filter_index=i) for i in range(16))
 
 
 @dataclass
-class ShadowFilterLayerXena:
-    tpld: ShadowFilterConfigTPLD = field(default_factory=ShadowFilterConfigTPLD)
+class FilterLayerXena:
+    tpld: FilterProtocolTPLD = field(default_factory=FilterProtocolTPLD)
 
-    def use_tpld(self) -> ShadowFilterConfigTPLD:
+    def use_tpld(self) -> FilterProtocolTPLD:
         self.tpld.__use_and()
         return self.tpld
 
 
 @dataclass
-class ShadowFilterConfigAnyField(FilterConfigCommon):
+class FilterProtocolAnyField(FilterConfigCommon):
     position: int = 0
     value: Hex = Hex('000000000000')
     mask: Hex = Hex('FFFFFFFFFFFF')
@@ -250,30 +252,30 @@ class ShadowFilterConfigAnyField(FilterConfigCommon):
 
 
 @dataclass
-class ShadowFilterLayerAny(FilterConfigCommon):
-    any_field: ShadowFilterConfigAnyField = field(default_factory=ShadowFilterConfigAnyField)
+class FilterLayerAny(FilterConfigCommon):
+    any_field: FilterProtocolAnyField = field(default_factory=FilterProtocolAnyField)
 
-    def use_any_field(self) -> ShadowFilterConfigAnyField:
+    def use_any_field(self) -> FilterProtocolAnyField:
         self.any_field.__use_and()
         return self.any_field
 
 
 @dataclass
-class ShadowFilterLayer2:
-    ethernet: ShadowFilterConfigEthernet = field(default_factory=ShadowFilterConfigEthernet)
+class FilterLayer2:
+    ethernet: FilterProtocolEthernet = field(default_factory=FilterProtocolEthernet)
 
-    def use_ethernet(self) -> ShadowFilterConfigEthernet:
+    def use_ethernet(self) -> FilterProtocolEthernet:
         return self.ethernet
 
 
 @dataclass
 class ShadowFilterConfigBasic:
-    layer_2: ShadowFilterLayer2 = field(default_factory=ShadowFilterLayer2)
-    layer_2_plus: ShadowFilterLayer2Plus = field(default_factory=ShadowFilterLayer2Plus)
-    layer_3: ShadowFilterLayer3 = field(default_factory=ShadowFilterLayer3)
-    layer_4: ShadowFilterLayer4 = field(default_factory=ShadowFilterLayer4)
-    layer_xena: ShadowFilterLayerXena = field(default_factory=ShadowFilterLayerXena)
-    layer_any: ShadowFilterLayerAny = field(default_factory=ShadowFilterLayerAny)
+    layer_2: FilterLayer2 = field(default_factory=FilterLayer2)
+    layer_2_plus: FilterLayer2Plus = field(default_factory=FilterLayer2Plus)
+    layer_3: FilterLayer3 = field(default_factory=FilterLayer3)
+    layer_4: FilterLayer4 = field(default_factory=FilterLayer4)
+    layer_xena: FilterLayerXena = field(default_factory=FilterLayerXena)
+    layer_any: FilterLayerAny = field(default_factory=FilterLayerAny)
 
 
 

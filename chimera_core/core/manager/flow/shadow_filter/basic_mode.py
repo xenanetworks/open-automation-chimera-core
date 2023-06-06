@@ -11,28 +11,28 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 from chimera_core.core.manager.__dataset import GeneratorToken
 from .__dataset import (
     TPLD_FILTERS_LENGTH,
-    create_inner_outer,
+    create_protocol_config_common,
     ShadowFilterConfigBasic,
-    ShadowFilterConfigEthernet,
+    FilterProtocolEthernet,
     ShadowFilterConfigEthernetAddr,
-    ShadowFilterConfigL2VLAN,
-    ShadowFilterConfigL2MPLS,
-    ShadowFilterConfigL3IPv4,
-    ShadowFilterConfigL3IPv6,
-    ShadowFilterConfigL2IPv4Addr,
-    ShadowFilterConfigL2IPv4DSCP,
+    FilterProtocolL2VLAN,
+    FilterProtocolL2MPLS,
+    FilterProtocolL3IPv4,
+    FilterProtocolL3IPv6,
+    FilterProtocolL3IPv4Addr,
+    FilterProtocolL3IPv4DSCP,
     ShadowFilterConfigBasicIPv6DESTADDR,
     ShadowFilterConfigBasicIPv6SRCADDR,
-    ShadowFilterConfigL4TCP,
-    ShadowFilterLayer2Plus,
-    ShadowFilterLayer2,
-    ShadowFilterLayer3,
-    ShadowFilterLayer4,
-    ShadowFilterLayerAny,
-    ShadowFilterLayerXena,
-    ShadowFilterConfigTPLD,
+    FilterProtocolL4TCP,
+    FilterLayer2Plus,
+    FilterLayer2,
+    FilterLayer3,
+    FilterLayer4,
+    FilterLayerAny,
+    FilterLayerXena,
+    FilterProtocolTPLD,
     ShadowFilterConfigTPLDID,
-    ShadowFilterConfigAnyField,
+    FilterProtocolAnyField,
 )
 
 
@@ -82,7 +82,7 @@ class ShadowFilterBasic:
                 self.basic_mode.any.config.get(),
             ))
 
-        config_ethernet = ShadowFilterConfigEthernet(
+        config_ethernet = FilterProtocolEthernet(
             filter_use=ethernet.use,
             match_action=ethernet.action,
             src_addr=ShadowFilterConfigEthernetAddr(
@@ -97,40 +97,40 @@ class ShadowFilterBasic:
             ),
         )
 
-        config_vlan = ShadowFilterConfigL2VLAN(
+        config_vlan = FilterProtocolL2VLAN(
             filter_use=vlan.use,
             match_action=vlan.action,
-            tag_inner=create_inner_outer(vlan_tag_inner),
-            tag_outer=create_inner_outer(vlan_tag_outer),
-            pcp_inner=create_inner_outer(vlan_pcp_inner),
-            pcp_outer=create_inner_outer(vlan_pcp_outer),
+            tag_inner=create_protocol_config_common(vlan_tag_inner),
+            tag_outer=create_protocol_config_common(vlan_tag_outer),
+            pcp_inner=create_protocol_config_common(vlan_pcp_inner),
+            pcp_outer=create_protocol_config_common(vlan_pcp_outer),
         )
 
-        config_mpls = ShadowFilterConfigL2MPLS(
+        config_mpls = FilterProtocolL2MPLS(
             filter_use=mpls.use,
             match_action=mpls.action,
-            label=create_inner_outer(mpls_label),
-            toc=create_inner_outer(mpls_toc),
+            label=create_protocol_config_common(mpls_label),
+            toc=create_protocol_config_common(mpls_toc),
         )
 
-        config_ipv4 = ShadowFilterConfigL3IPv4(
+        config_ipv4 = FilterProtocolL3IPv4(
             match_action=ipv4.action,
-            src_addr=ShadowFilterConfigL2IPv4Addr(
+            src_addr=FilterProtocolL3IPv4Addr(
                 use=ipv4_src_addr.use,
                 value=ipv4_src_addr.value,
                 mask=ipv4_src_addr.mask,
             ),
-            dest_addr=ShadowFilterConfigL2IPv4Addr(
+            dest_addr=FilterProtocolL3IPv4Addr(
                 use=ipv4_dest_addr.use,
                 value=ipv4_dest_addr.value,
                 mask=ipv4_dest_addr.mask,
             ),
-            dscp=ShadowFilterConfigL2IPv4DSCP(
+            dscp=FilterProtocolL3IPv4DSCP(
                 value=ipv4_dscp.value,
                 mask=ipv4_dscp.mask,
             ),
         )
-        config_ipv6 = ShadowFilterConfigL3IPv6(
+        config_ipv6 = FilterProtocolL3IPv6(
             match_action=ipv6.action,
             src_addr=ShadowFilterConfigBasicIPv6SRCADDR(
                 use=ipv6_src_addr.use,
@@ -144,32 +144,32 @@ class ShadowFilterBasic:
             ),
         )
 
-        config_tcp = ShadowFilterConfigL4TCP(
+        config_tcp = FilterProtocolL4TCP(
             filter_use=tcp.use,
             match_action=tcp.action,
-            src_port=create_inner_outer(tcp_src_port),
-            dest_port=create_inner_outer(tcp_dest_port),
+            src_port=create_protocol_config_common(tcp_src_port),
+            dest_port=create_protocol_config_common(tcp_dest_port),
         )
-        use_l2plus = ShadowFilterLayer2Plus(present=l2.use, vlan=config_vlan, mpls=config_mpls)
-        use_l3 = ShadowFilterLayer3(present=l3.use, ipv4=config_ipv4, ipv6=config_ipv6)
-        use_l4 = ShadowFilterLayer4(tcp=config_tcp)
+        use_l2plus = FilterLayer2Plus(present=l2.use, vlan=config_vlan, mpls=config_mpls)
+        use_l3 = FilterLayer3(present=l3.use, ipv4=config_ipv4, ipv6=config_ipv6)
+        use_l4 = FilterLayer4(tcp=config_tcp)
 
         tpld_id_configs = []
         for i, setting in enumerate(tpld_id_settings):
             tpld_id_configs.append(ShadowFilterConfigTPLDID(filter_index=i, tpld_id=setting.id, use=setting.use))
-        use_xena = ShadowFilterLayerXena(
-            tpld=ShadowFilterConfigTPLD(
+        use_xena = FilterLayerXena(
+            tpld=FilterProtocolTPLD(
                 match_action=tpld.action,
                 configs=tuple(tpld_id_configs)),
             )
 
-        config_any = ShadowFilterLayerAny(
+        config_any = FilterLayerAny(
             filter_use=any_setting.use,
             match_action=any_setting.action,
-            any_field=ShadowFilterConfigAnyField(position=any_config.position, value=any_config.value, mask=any_config.mask),
+            any_field=FilterProtocolAnyField(position=any_config.position, value=any_config.value, mask=any_config.mask),
         )
         basic_config = ShadowFilterConfigBasic(
-            layer_2=ShadowFilterLayer2(ethernet=config_ethernet),
+            layer_2=FilterLayer2(ethernet=config_ethernet),
             layer_2_plus=use_l2plus,
             layer_3=use_l3,
             layer_4=use_l4,
