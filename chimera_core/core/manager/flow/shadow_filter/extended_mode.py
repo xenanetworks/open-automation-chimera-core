@@ -10,6 +10,7 @@ from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.genera
 from .__dataset import (
     ProtocolSegement,
     ShadowFilterConfigExtended,
+    Hex,
 )
 
 
@@ -33,8 +34,8 @@ class ShadowFilterExtended:
 
     async def set_single_protocol_segment_content(self, protocol_segment_hli: HLIProtocolSegment, value: str, mask: str) -> None:
         await utils.apply(
-            protocol_segment_hli.value.set(value),
-            protocol_segment_hli.mask.set(mask),
+            protocol_segment_hli.value.set(Hex(value)),
+            protocol_segment_hli.mask.set(Hex(mask)),
         )
 
     async def get(self) -> ShadowFilterConfigExtended:
