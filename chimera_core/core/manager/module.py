@@ -33,8 +33,7 @@ class ModuleConfigurator:
             latency_mode=latency_mode.mode,
             cfp_type=cfp_type.type,
             cfp_state=cfp_type.state,
-            port_count=cfp_config.port_count,
-            port_speed=cfp_config.port_speed,
+            port_speed=cfp_config.portspeed_list,
             bypass_mode=bypass_mode.on_off,
         )
 
@@ -44,7 +43,7 @@ class ModuleConfigurator:
             self.module.clock_ppb.set(config.clock_ppb),
             self.module.tx_clock.source.set(config.tx_clock_source),
             self.module.latency_mode.set(config.latency_mode),
-            self.module.cfp.config.set(config.port_count, config.port_speed),
+            self.module.cfp.config.set(config.port_speed),
             self.module.bypass_mode.set(config.bypass_mode),
         )
         await asyncio.gather(*coroutines)

@@ -25,7 +25,7 @@ class ModuleConfig:
     cfp_type: enums.MediaCFPType = enums.MediaCFPType.CFP_UNKNOWN
     cfp_state: enums.MediaCFPState = enums.MediaCFPState.NOT_CFP
     port_count: int = 0
-    port_speed: int = 0
+    port_speed: List[int] = field(default_factory=list)
     bypass_mode: enums.OnOff = enums.OnOff.OFF
 
 
