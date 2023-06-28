@@ -1,5 +1,5 @@
 import os
-from typing import TYPE_CHECKING, Callable, Dict, Optional, Set, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Type, TypeVar, Union
 
 from loguru import logger
 from xoa_driver.v2.testers import L23Tester
@@ -49,7 +49,7 @@ class MainController:
             self.__is_started = True
         return self
 
-    async def list_testers(self) -> list[TesterInfoModel]:
+    async def list_testers(self) -> List[TesterInfoModel]:
         """List the added testers.
 
         :return: list of testers
