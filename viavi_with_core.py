@@ -5,12 +5,13 @@ from typing import List
 from loguru import logger
 
 from chimera_core.controller import MainController
-from chimera_core.types import dataset
-from chimera_core.types import distributions
+from chimera_core.types import (
+    dataset,
+    distributions,
+)
 
 
 class CoreExample:
-    credential: dataset.Credentials
     controller: MainController
     tester: dataset.TesterManager
 
@@ -41,7 +42,7 @@ class CoreExample:
     async def configure_flow(self, flow: dataset.FlowManager) -> None:
         await flow.shadow_filter.clear()
         await flow.shadow_filter.init()
-        # await flow.shadow_filter.apply()
+        await flow.shadow_filter.apply()
         flow_config = await flow.get()
         flow_config.comment = "On VLAN 20"
         await flow.set(flow_config)
