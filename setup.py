@@ -1,10 +1,11 @@
-import setuptools
+from setuptools import setup
+
 
 def main() -> None:
-    setuptools.setup(
+    setup(
+        version="0.0.1",
         name="chimera-core",
         description="wait to be fill",
-        packages=['chimera_core'],
         install_requires=["xoa_driver>=1.0.12", "pydantic", "loguru"],
     )
 
