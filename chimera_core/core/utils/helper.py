@@ -1,7 +1,6 @@
 import asyncio
 from typing import Union
 
-from loguru import logger
 from xoa_driver import utils
 from xoa_driver.v2.testers import L23Tester
 from xoa_driver.v2.modules import ModuleChimera
@@ -16,7 +15,6 @@ TypeResouces = Union[L23Tester, ModuleChimera, PortChimera]
 
 async def reserve_resources(*resources: TypeResouces) -> None:
     async def relinquish(resource: TypeResouces) -> None:
-        logger.debug(resource)
         while enums.ReservedStatus(resource.info.reservation) != enums.ReservedStatus.RELEASED:
             await resource.reservation.set_relinquish()
             await asyncio.sleep(INTERVEL_CHECK_RESERVE_RESOURCE)
@@ -28,7 +26,6 @@ async def reserve_resources(*resources: TypeResouces) -> None:
             continue
 
         tokens.append(res.reservation.set_reserve())
-        logger.debug(res.info.reserved_by)
         if isinstance(res, PortChimera):
             res.reset.set()
 
