@@ -26,13 +26,13 @@ class TesterManager(ReserveMixin):
             raise InvalidChimeraResourceError('module')
         return module
 
-    async def use_module(self, module_id: int, reserve: bool = False) -> "ModuleManager":
+    async def use_module(self, module_id: int, reserve: bool = True) -> "ModuleManager":
         manager = ModuleManager(self._obtain_module(module_id))
         if reserve:
             await manager.reserve_if_not()
         return manager
 
-    async def use_port(self, module_id: int, port_id: int, reserve: bool = False) -> "PortManager":
+    async def use_port(self, module_id: int, port_id: int, reserve: bool = True) -> "PortManager":
         module = self._obtain_module(module_id)
         port = module.ports.obtain(port_id)
         if not isinstance(port, PortChimera):

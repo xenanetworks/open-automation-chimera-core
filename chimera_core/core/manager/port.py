@@ -60,7 +60,7 @@ class PortConfigurator:
         return config
 
     async def set(self, config: PortConfig) -> None:
-        await utils.apply(*(
+        await utils.apply(
             self.port.comment.set(config.comment),
             self.port.pcs_pma.link_flap.enable.set(config.link_flap.enable),
             self.port.pcs_pma.link_flap.params.set(
@@ -79,7 +79,7 @@ class PortConfigurator:
             self.port.emulate.set(config.emulate),
             self.port.emulation.tpld_mode.set(config.tpld_mode),
             self.port.emulation.drop_fcs_errors.set(config.fcs_error_mode),
-        ))
+        )
 
 
 
@@ -133,6 +133,8 @@ class CustomDistributionsManager:
 
 
 class PortManager(ReserveMixin):
+    resource_instance: "PortChimera"
+
     def __init__(self, port: "PortChimera") -> None:
         self.resource_instance = port
         self.config = PortConfigurator(port)
@@ -145,3 +147,6 @@ class PortManager(ReserveMixin):
 
     def __await__(self) -> Generator[None, None, "PortManager"]:
         return self.setup().__await__()
+
+    async def reset(self) -> None:
+        await self.resource_instance.reset.set()
