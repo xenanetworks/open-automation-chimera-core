@@ -15,7 +15,6 @@ def main() -> None:
         maintainer="Xena Networks",
         maintainer_email="support@xenanetworks.com",
         url="https://github.com/xenanetworks/chimera-core",
-        packages=setuptools.find_packages(),
         license='Apache 2.0',
         install_requires=["xoa_driver>=1.0.12", "pydantic", "loguru"],
         classifiers=[
