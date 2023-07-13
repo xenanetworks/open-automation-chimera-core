@@ -30,16 +30,31 @@ class FlowManager:
         self.shaper = ImpairmentShaper(flow.shaper)
 
     async def get(self) -> FlowConfig:
+        """Get the flow configuration
+
+        :return: flow configuration
+        :rtype: FlowConfig
+        """
         comment = (await self.__flow.comment.get()).comment
         return FlowConfig(
             comment=comment
         )
 
     async def set(self, config: FlowConfig) -> None:
+        """Set the flow configuration
+
+        :param config: flow configuration
+        :type config: FlowConfig
+        """
         await self.__flow.comment.set(comment=config.comment)
 
     @property
     def statistics(self) -> Any:
+        """Return the flow statistics
+
+        :return: flow statistics
+        :rtype: Any
+        """
         return self.__flow.statistics
 
 
