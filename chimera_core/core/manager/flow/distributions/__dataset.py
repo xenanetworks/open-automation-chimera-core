@@ -129,7 +129,7 @@ class DistributionWithNonBurstSchedule(DistributionConfigBase, ScheduleMixin):
 
 
 @dataclass
-class Step(DistributionWithBurstSchedule):
+class Step(DistributionWithNonBurstSchedule):
     """The Step Distribution will apply an impairment to a flow, randomly altering between two configurable values. The step distribution is only applicable to latency / jitter.
 
     :param min: specifies the minimum delay in multiples of 100 ns
@@ -432,6 +432,13 @@ class RandomRate(DistributionWithNonBurstSchedule):
 
 @dataclass
 class ConstantDelay(DistributionWithFixedContinuousSchedule):
+    """“Constant Delay will apply a constant delay to all packets in the flow.
+
+    :param DistributionWithFixedContinuousSchedule: _description_
+    :type DistributionWithFixedContinuousSchedule: _type_
+    :yield: _description_
+    :rtype: _type_
+    """
     delay: int = 0
 
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
