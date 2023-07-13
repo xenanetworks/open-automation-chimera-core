@@ -66,22 +66,48 @@ TypeTokenResponseOrError = Union[Exception, Any]
 
 class OnOffMixin:
     on_off: enums.OnOff
+    """
+    specifies on or off
+    """
 
     def set_on_off(self, on_off: enums.OnOff) -> None:
+        """Set on or off of the control
+
+        :param on_off: specifies on or off
+        :type on_off: enums.OnOff
+        """
         self.on_off = on_off
 
     set_on = partialmethod(set_on_off, enums.OnOff.ON)
+    """Set control on"""
     set_off = partialmethod(set_on_off, enums.OnOff.OFF)
+    """Set control off"""
 
 
 class PolicerModeMixin:
     mode: enums.PolicerMode
+    """
+    specifies the policer mode
+    """
 
     def set_control_mode(self, mode: enums.PolicerMode) -> None:
+        """Set bandwidth control mode.
+
+        It is configurable whether the policer will be applied at layer 1 or layer 2. When configured for layer 2, only the Ethernet packets starting with the DMAC and ending with the FCS are counted as part of the traffic. When controlling at layer 1 the minimum IPG (= 12 bytes) and the preamble (= 8 bytes) are considered part of the traffic.
+
+        :param mode: bandwidth control mode
+        :type mode: enums.PolicerMode
+        """
         self.mode = mode
 
     set_control_on_l2 = partialmethod(set_control_mode, enums.PolicerMode.L2)
+    """
+    Set bandwidth control on layer 2. When configured for layer 2, only the Ethernet packets starting with the DMAC and ending with the FCS are counted as part of the traffic.
+    """
     set_control_on_l1  = partialmethod(set_control_mode, enums.PolicerMode.L1)
+    """
+    Set bandwidth control on layer 1. When controlling at layer 1 the minimum IPG (= 12 bytes) and the preamble (= 8 bytes) are considered part of the traffic.
+    """
 
 
 @dataclass
@@ -216,10 +242,33 @@ class ImpairmentConfigGeneral(ImpairmentConfigBase):
 
 @dataclass
 class ImpairmentConfigPolicer(OnOffMixin, PolicerModeMixin):
+    """
+    Chimera implements policers at every flow input, which will drop all packets that exceed the Committed Information Rate (CIR) and Committed Burst Size (CBS).
+
+    Likewise, Chimera implements shapers at the output, which will shape the outgoing traffic to a configurable bandwidth (CIR) and Committed Burst Size (CBS). If excess packets are available, there is a buffer of configurable size (Buffer size) for storing excess packets. If the buffer overflows due to shaper BW limiting, packets will be dropped.
+
+    Policers and shapers implement a leaky bucket and update the current fill level. The fill level is reduced with the rate specified by CIR and increased with the packet size when a packet is forwarded. If the bucket fill level is above the CBS when a packet arrives at the policer / shaper, the packet will be dropped (policer) or held back (shaper). If the fill level is below the CBS, the packet will be forwarded, and the size of the packet is added to the fill level.
+    """
+
     on_off: enums.OnOff = enums.OnOff.OFF
+    """
+    specifies the on/off of the policer
+    """
+    
     mode: enums.PolicerMode = enums.PolicerMode.L2
+    """
+    specifies the policer mode
+    """
+
     cir: int = 0
+    """
+    Committed Information Rate (CIR) in multiples of 100 kbps.
+    """
+
     cbs: int = 0
+    """
+    Committed Burst Size (CBS) in frames.
+    """
 
     async def apply(self, impairment: CPolicerImpairment) -> None:
         impairment.config.set(
@@ -240,11 +289,40 @@ class ImpairmentConfigPolicer(OnOffMixin, PolicerModeMixin):
 
 @dataclass
 class ImpairmentConfigShaper(OnOffMixin, PolicerModeMixin):
+    """
+    Chimera implements policers at every flow input, which will drop all packets that exceed the Committed Information Rate (CIR) and Committed Burst Size (CBS).
+
+    Likewise, Chimera implements shapers at the output, which will shape the outgoing traffic to a configurable bandwidth (CIR) and Committed Burst Size (CBS). If excess packets are available, there is a buffer of configurable size (Buffer size) for storing excess packets. If the buffer overflows due to shaper BW limiting, packets will be dropped.
+
+    Policers and shapers implement a leaky bucket and update the current fill level. The fill level is reduced with the rate specified by CIR and increased with the packet size when a packet is forwarded. If the bucket fill level is above the CBS when a packet arrives at the policer / shaper, the packet will be dropped (policer) or held back (shaper). If the fill level is below the CBS, the packet will be forwarded, and the size of the packet is added to the fill level.
+    """
+
     on_off: enums.OnOff = enums.OnOff.OFF
+    """
+    specifies the on/off of the shaper
+    """
+
     mode: enums.PolicerMode = enums.PolicerMode.L2
+    """
+    specifies the shaper mode
+    """
+
     cir: int = 0
+    """
+    Committed Information Rate (CIR) in multiples of 100 kbps.
+    """
+
     cbs: int = 0
+    """
+    Committed Burst Size (CBS) in frames.
+    """
+
     buffer_size: int = 0
+    """
+    Buffer size in frames.
+
+    The amount of memory allocated for the shaper buffer will be taken from the buffer used for generating latency, so when memory is allocated for shaper buffering, the guaranteed lossless latency will decrease accordingly.
+    """
 
     def apply(self, impairment: CShaperImpairment) -> GeneratorToken:
         yield impairment.config.set(
