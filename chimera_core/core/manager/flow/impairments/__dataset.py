@@ -254,7 +254,7 @@ class ImpairmentConfigPolicer(OnOffMixin, PolicerModeMixin):
     """
     specifies the on/off of the policer
     """
-    
+
     mode: enums.PolicerMode = enums.PolicerMode.L2
     """
     specifies the policer mode
@@ -350,4 +350,13 @@ class ImpairmentConfigCorruption(ImpairmentConfigGeneral):
 
     def apply(self, impairment: CCorruptionImpairment) -> GeneratorToken:
         yield impairment.type.set(self.corruption_type)
+        yield from super().apply(impairment)
+
+
+@dataclass
+class ImpairmentConfigMisordering(ImpairmentConfigGeneral):
+    depth: int = 0
+
+    def apply(self, impairment: CMisorderingImpairment) -> GeneratorToken:
+        yield impairment.depth.set(self.depth)
         yield from super().apply(impairment)
