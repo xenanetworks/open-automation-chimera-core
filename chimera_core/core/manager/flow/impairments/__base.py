@@ -1,6 +1,6 @@
 import asyncio
 import importlib
-from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, Union
 
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
     CDropImpairment,
@@ -52,7 +52,7 @@ TImpairmentWithDistribution = TypeVar(
     CCorruptionImpairment,
 )
 
-TConfig = TypeVar('TConfig', ImpairmentConfigGeneral, ImpairmentConfigCorruption)
+TConfig = Union[ImpairmentConfigGeneral, ImpairmentConfigCorruption]
 
 class ImpairmentManagerGeneral(ImpairmentManagerBase[TImpairmentWithDistribution]):
     read_distribution_config_from_server: BatchReadDistributionConfigFromServer
