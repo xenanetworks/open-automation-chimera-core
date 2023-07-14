@@ -99,10 +99,9 @@ class DistributionWithBurstSchedule(DistributionConfigBase, ScheduleMixin):
 
 @dataclass
 class DistributionWithFixedContinuousSchedule(DistributionConfigBase):
-    schedule: Schedule = field(default_factory=lambda: Schedule(duration=1, period=0))
-
     def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield from self.schedule.apply(impairment)
+        # fixed value combination represent contiguous in xena server
+        yield impairment.schedule.set(duration=1, period=0)
 
 
 @dataclass
@@ -200,7 +199,7 @@ class FixedRate(DistributionWithNonBurstSchedule):
     :param probability: probability in ppm
     :type probability: int
     """
-    
+
     probability: int = 0
     """probability in ppm"""
 
@@ -275,7 +274,7 @@ class Gaussian(DistributionWithNonBurstSchedule):
     """The Gaussian (Normal) distribution implements an approximation of the mathematical function, which is defined by a mean value (μ) and a standard deviation (σ). When a flow is configured for Gaussian Jitter, the mean latency of packets is equal to the configured mean latency, and the deviations of single packets from the mean will be according to the Gaussian distribution.
 
     Chimera limits the Gaussian function to the following latency interval:
-    
+
     μ - 3 x σ <= simulated values <= μ + 3 x σ
 
     :param mean: specifies the mean value of packets or multiples of 100 ns in case of latency for the Gaussian distribution
@@ -353,11 +352,11 @@ class Poisson(DistributionWithNonBurstSchedule):
 @dataclass
 class Custom(DistributionWithNonBurstSchedule):
     """In addition to the pre-defined distributions described above, Chimera supports the definition of Custom Distributions. Custom distributions are table-based distributions which are defined per port. They are identified by a Custom ID (cust_id), which identifies each custom distribution on that port. Chimera supports up to 40 custom distributions per port (cust_id: 1-40). Once the custom distribution is defined, it can be applied to any of the impairments in the impairment pipeline.
-    
+
     A custom distribution is a table-based distribution, where the user can supply the values in the table. Furthermore, the user can configure whether the values in the table should be applied in a predictable order, reading out table index 0, 1, 2 … 511/1023 -> 0, 1, 2 …, or whether the values are applied in a random order.
-    
+
     Finally, the user can supply a Custom Name for every custom distribution to make it easier to navigate within the distributions defined.
-    
+
     The custom distributions will support 512 table entries for inter-packet distributions and 1024 values for latency / jitter distributions. As a result, only custom distributions with 1024 entries may be assigned to latency / jitter, while custom distributions with 512 entries can be assigned to all other impairments except for misordering, which does not support custom distributions.
 
     :param custom_distribution: specifies the customer distribution object
@@ -380,7 +379,7 @@ class Custom(DistributionWithNonBurstSchedule):
 @dataclass
 class AccumulateBurst(DistributionWithBurstSchedule):
     """Chimera allows simulating temporary congestion in a network using the Accumulate and Burst distribution. For a configurable period (Burst Delay), packets are collected in a buffer, rather than forwarded to the output port. After this period of time, all the buffered packets are forwarded to the output as fast as possible, thus creating a burst. Once buffered packets have been transmitted from the buffer, packets will be forwarded with minimum latency.
-    
+
     The packet accumulation is triggered by the first packet received on the flow after the distribution was enabled.
 
     :param burst_delay: specifies the duration of the packet accumulation after receiving the first packet in multiples of 100 ns.
