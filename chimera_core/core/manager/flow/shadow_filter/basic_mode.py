@@ -42,6 +42,11 @@ class ShadowFilterBasic:
         self.basic_mode = basic_mode_hli
 
     async def get(self) -> ShadowFilterConfigBasic:
+        """Get the configuration of the shadow filter that is in basic mode
+
+        :return: the configuration of the shadow filter that is in basic mode
+        :rtype: ShadowFilterConfigBasic
+        """
         ethernet, ethernet_src_addr, ethernet_dest_addr, \
             l2, vlan, vlan_tag_inner, vlan_pcp_inner, vlan_tag_outer, vlan_pcp_outer, mpls, mpls_label, mpls_toc, \
             l3, ipv4, ipv4_src_addr, ipv4_dest_addr, ipv4_dscp, ipv6, ipv6_src_addr, ipv6_dest_addr, \
