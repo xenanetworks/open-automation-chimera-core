@@ -1,7 +1,7 @@
 import asyncio
 from functools import partial
 from typing import List
-
+from ipaddress import IPv4Address, IPv6Address
 from loguru import logger
 
 from chimera_core.controller import MainController
@@ -28,26 +28,149 @@ async def my_awesome_func():
     await port.reserve_if_not()
     await port.reset()
 
+    #----------------------------------------------
+    # Flow configuration on a port
+    # ---------------------------------------------
+    #region Flow configuration on a port
+
+    # Configure flow properties
     flow = port.flows[FLOW_IDX]
     flow_config = await flow.get()
     flow_config.comment = "On VLAN 111"
     await flow.set(config=flow_config)
 
+    # Initialize shadow filter on the flow
     shadow_filter = flow.shadow_filter
-    await shadow_filter.clear()
     await shadow_filter.init()
-
+    await shadow_filter.clear()
+    
+    # Configure shadow filter to BASIC mode
     basic_filter = await shadow_filter.use_basic_mode()
     basic_filter_config = await basic_filter.get()
-    ethernet_field = basic_filter_config.layer_2.use_ethernet()
-    ethernet_field.src_addr.on(value=dataset.Hex("AAAAAAAAAAAA"), mask=dataset.Hex("FFFFFFFFFFFF"))
-    ethernet_field.dest_addr.on(value=dataset.Hex("BBBBBBBBBBBB"), mask=dataset.Hex("FFFFFFFFFFFF"))
-    vlan_tag_field = basic_filter_config.layer_2_plus.use_1_vlan_tag()
-    vlan_tag_field.include()
-    vlan_tag_field.tag_inner.on(value=111, mask=dataset.Hex("0FFF"))
+
+    #------------------
+    # Ethernet subfilter
+    #------------------
+    # Use and configure basic-mode shadow filter's Ethernet subfilter
+    ethernet_subfilter = basic_filter_config.layer_2.use_ethernet()
+    ethernet_subfilter.exclude()
+    ethernet_subfilter.include()
+    ethernet_subfilter.src_addr.on(value=dataset.Hex("AAAAAAAAAAAA"), mask=dataset.Hex("FFFFFFFFFFFF"))
+    ethernet_subfilter.dest_addr.on(value=dataset.Hex("BBBBBBBBBBBB"), mask=dataset.Hex("FFFFFFFFFFFF"))
+
+
+    #------------------
+    # Layer 2+ subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer 2+ subfilter
+    layer_2_plus_subfilter = basic_filter_config.layer_2_plus.use_none()
+
+    # Use and configure basic-mode shadow filter's Layer2+ subfilter (One VLAN tag)
+    layer_2_plus_subfilter = basic_filter_config.layer_2_plus.use_1_vlan_tag()
+    layer_2_plus_subfilter.off()
+    layer_2_plus_subfilter.exclude()
+    layer_2_plus_subfilter.include()
+    layer_2_plus_subfilter.tag_inner.on(value=1234, mask=dataset.Hex("FFF"))
+    layer_2_plus_subfilter.pcp_inner.on(value=3, mask=dataset.Hex("7"))
+
+    # Use and configure basic-mode shadow filter's Layer2+ subfilter (Two VLAN tag)
+    layer_2_plus_subfilter = basic_filter_config.layer_2_plus.use_2_vlan_tags()
+    layer_2_plus_subfilter.off()
+    layer_2_plus_subfilter.exclude()
+    layer_2_plus_subfilter.include()
+    layer_2_plus_subfilter.tag_inner.on(value=1234, mask=dataset.Hex("FFF"))
+    layer_2_plus_subfilter.pcp_inner.on(value=3, mask=dataset.Hex("7"))
+    layer_2_plus_subfilter.tag_outer.on(value=2345, mask=dataset.Hex("FFF"))
+    layer_2_plus_subfilter.pcp_outer.on(value=0, mask=dataset.Hex("7"))
+
+    # Use and configure basic-mode shadow filter's Layer2+ subfilter (MPLS)
+    layer_2_plus_subfilter = basic_filter_config.layer_2_plus.use_mpls()
+    layer_2_plus_subfilter.off()
+    layer_2_plus_subfilter.exclude()
+    layer_2_plus_subfilter.include()
+    layer_2_plus_subfilter.label.on(value=1000, mask=dataset.Hex("FFFFF"))
+    layer_2_plus_subfilter.toc.on(value=0, mask=dataset.Hex("7"))
+
+
+    #------------------
+    # Layer 3 subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer 3 subfilter
+    layer_3_subfilter = basic_filter_config.layer_3.use_none()
+    
+    # Use and configure basic-mode shadow filter's Layer 3 subfilter (IPv4)
+    layer_3_subfilter = basic_filter_config.layer_3.use_ipv4()
+    layer_3_subfilter.off()
+    layer_3_subfilter.exclude()
+    layer_3_subfilter.include()
+    layer_3_subfilter.src_addr.on(value=IPv4Address("10.0.0.2"), mask=dataset.Hex("FFFFFFFF"))
+    layer_3_subfilter.dest_addr.on(value=IPv4Address("11.0.0.2"), mask=dataset.Hex("FFFFFFFF"))
+    layer_3_subfilter.dscp.on(value=0, mask=dataset.Hex("FC"))
+
+    # Use and configure basic-mode shadow filter's Layer 3 subfilter (IPv6)
+    layer_3_subfilter = basic_filter_config.layer_3.use_ipv6()
+    layer_3_subfilter.exclude()
+    layer_3_subfilter.include()
+    layer_3_subfilter.src_addr.on(value=IPv6Address("2001::2"), mask=dataset.Hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"))
+    layer_3_subfilter.dest_addr.on(value=IPv6Address("2002::2"), mask=dataset.Hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"))
+
+
+    #------------------
+    # Layer 4 subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer 4 subfilter
+    layer_4_subfilter = basic_filter_config.layer_4.use_none()
+    
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    layer_4_subfilter = basic_filter_config.layer_4.use_tcp()
+    layer_4_subfilter.off()
+    layer_4_subfilter.exclude()
+    layer_4_subfilter.include()
+    layer_4_subfilter.src_port.on(value=1234, mask=dataset.Hex("FFFF"))
+    layer_4_subfilter.dest_port.on(value=80, mask=dataset.Hex("FFFF"))
+
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (UDP)
+    layer_4_subfilter = basic_filter_config.layer_4.use_udp()
+    layer_4_subfilter.off()
+    layer_4_subfilter.exclude()
+    layer_4_subfilter.include()
+    layer_4_subfilter.src_port.on(value=1234, mask=dataset.Hex("FFFF"))
+    layer_4_subfilter.dest_port.on(value=80, mask=dataset.Hex("FFFF"))
+
+
+    #------------------
+    # Layer Xena subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer Xena subfilter
+    layer_xena_subfilter = basic_filter_config.layer_xena.use_none()
+
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    layer_xena_subfilter = basic_filter_config.layer_xena.use_tpld()
+    layer_xena_subfilter.off()
+    layer_xena_subfilter.exclude()
+    layer_xena_subfilter.include()
+    # layer_xena_subfilter.configs
+
+
+    #------------------
+    # Layer Any subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer Any subfilter
+    layer_any_subfilter = basic_filter_config.layer_any.use_none()
+
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    layer_any_subfilter = basic_filter_config.layer_any.use_any_field()
+    layer_any_subfilter.off()
+    layer_any_subfilter.exclude()
+    layer_any_subfilter.include()
+    layer_any_subfilter.on(position=0, value=dataset.Hex("112233445566"), mask=dataset.Hex("112233445566"))
+
+
     await basic_filter.set(basic_filter_config)
     await shadow_filter.enable()
     await shadow_filter.apply()
+
+    # endregion
 
     #----------------------------------------------
     # Impairment - Drop
@@ -141,6 +264,7 @@ async def my_awesome_func():
 
     # Set distribution and start impairment Misordering
     misordering_config = await flow.misordering.get()
+    misordering_config.depth = 1
     misordering_config.set_distribution(dist)
     await flow.misordering.start(misordering_config)
     await flow.misordering.stop(misordering_config)
@@ -153,7 +277,7 @@ async def my_awesome_func():
     #region Impairment - Latency & Jitter
 
     # Fixed Burst distribution for impairment Latency & Jitter
-    dist = distributions.latency_jitter.ConstantDelay(delay=1000)
+    dist = distributions.latency_jitter.ConstantDelay(delay=100)
 
 
     # Random Burst distribution for impairment Latency & Jitter
