@@ -22,6 +22,11 @@ class PortConfigurator:
         self.port = port
 
     async def get(self) -> PortConfig:
+        """Get port configuration
+
+        :return: Port configuration
+        :rtype: PortConfig
+        """
         comment, enable_tx, enable_link_flap, link_flap_params, enable_pulse_error, pulse_error_params, \
             emulate, tpld_mode, fcs_error_mode = await asyncio.gather(*(
                 self.port.comment.get(),
@@ -51,15 +56,20 @@ class PortConfigurator:
         config = PortConfig(
             comment=comment.comment,
             link_flap=link_flap,
-            pulse_error=pulse_error,
+            pma_error_pulse=pulse_error,
             enable_tx=enable_tx.on_off,
-            emulate=emulate.action,
+            enable_impairment=emulate.action,
             tpld_mode=tpld_mode.mode,
             fcs_error_mode=fcs_error_mode.on_off,
         )
         return config
 
     async def set(self, config: PortConfig) -> None:
+        """Set port configuration
+
+        :param config: Port configuration
+        :type config: PortConfig
+        """
         await utils.apply(
             self.port.comment.set(config.comment),
             self.port.pcs_pma.link_flap.enable.set(config.link_flap.enable),
@@ -68,15 +78,15 @@ class PortConfigurator:
                 period=config.link_flap.period,
                 repetition=config.link_flap.repetition
             ),
-            self.port.pcs_pma.pma_pulse_err_inj.enable.set(config.pulse_error.enable),
+            self.port.pcs_pma.pma_pulse_err_inj.enable.set(config.pma_error_pulse.enable),
             self.port.pcs_pma.pma_pulse_err_inj.params.set(
-                duration=config.pulse_error.duration,
-                period=config.pulse_error.period,
-                repetition=config.pulse_error.repetition,
-                coeff=config.pulse_error.coeff,
-                exp=config.pulse_error.exp,
+                duration=config.pma_error_pulse.duration,
+                period=config.pma_error_pulse.period,
+                repetition=config.pma_error_pulse.repetition,
+                coeff=config.pma_error_pulse.coeff,
+                exp=config.pma_error_pulse.exp,
             ),
-            self.port.emulate.set(config.emulate),
+            self.port.emulate.set(config.enable_impairment),
             self.port.emulation.tpld_mode.set(config.tpld_mode),
             self.port.emulation.drop_fcs_errors.set(config.fcs_error_mode),
         )
@@ -138,8 +148,13 @@ class PortManager(ReserveMixin):
     def __init__(self, port: "PortChimera") -> None:
         self.resource_instance = port
         self.config = PortConfigurator(port)
+        """Port configurator"""
+
         self.flows = FlowManagerContainer([FlowManager(f) for f in port.emulation.flow])
+        """Port flow manager"""
+
         self.custom_distributions = CustomDistributionsManager(port.custom_distributions)
+        """Port custom distribution manager"""
 
     async def setup(self) -> "PortManager":
         # await self.port_instance.emulate.set_on()
@@ -149,4 +164,6 @@ class PortManager(ReserveMixin):
         return self.setup().__await__()
 
     async def reset(self) -> None:
+        """Reset the port
+        """
         await self.resource_instance.reset.set()
