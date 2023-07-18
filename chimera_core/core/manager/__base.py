@@ -22,8 +22,9 @@ class ReserveMixin:
         asyncio.gather(*coroutines)
         await reserve_resources(self.resource_instance)
 
-    async def free(self) -> None:
-        """Free the resource.
-        If the resource is reserved by you, release the resource.
-        If the resource is reserved by others, relinquish the resource.
+    async def free(self, should_free_sub_resources: bool) -> None:
+        """Free the resource. 
+
+        :param should_free_sub_resources: specifies if its sub resources are also to be freed.
+        :type should_free_sub_resources: bool
         """
