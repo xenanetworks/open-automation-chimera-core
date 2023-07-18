@@ -605,12 +605,10 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # ---------------------------------------------
     # region Statistics
 
-    # flow = await self.__use_flow(self.flow_id)
-    # while not self.stop_event.is_set():
-    #     rx = await flow.statistics.rx.total.get()
-    #     drop = await flow.statistics.total.dropped.get()
-    #     logger.debug(f"total received packet: {rx.packet_count}, total dropped: {drop.pkt_drop_count_total}")
-    #     await asyncio.sleep(1)
+    rx_total = await flow.statistics.rx.total.get()
+    tx_total = await flow.statistics.tx.total.get()
+    drop = await flow.statistics.total.dropped.get()
+
 
     #endregion
 
