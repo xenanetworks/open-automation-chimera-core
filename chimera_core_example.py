@@ -7,31 +7,74 @@ from loguru import logger
 from chimera_core.controller import MainController
 from chimera_core.types import distributions, enums, dataset
 
-CHASSIS_IP = "10.20.1.166"
+CHASSIS_IP = "10.20.30.42"
 USERNAME = "chimeracore"
 MODULE_IDX = 2
 PORT_IDX = 0
 FLOW_IDX = 1
 
-async def my_awesome_func():
+async def my_awesome_func(stop_event: asyncio.Event):
 
+    # create credential object
     credentials = dataset.Credentials(
         product=dataset.EProductType.VALKYRIE,
         host=CHASSIS_IP)
     
+    # create chimera core controller object
     controller = await MainController()
+
+    # add chimera emulator into the chassis inventory and get the ID
     tester_id = await controller.add_tester(credentials=credentials)
 
+    # create tester object
     tester = await controller.use(tester_id, username=USERNAME, reserve=False, debug=False)
 
+    # create module object and reserve the module
+    module = await tester.use_module(module_id=MODULE_IDX, reserve=True)
+
+    # create port object and reserver the port
     port = await tester.use_port(module_id=MODULE_IDX, port_id=PORT_IDX, reserve=True)
-    await port.reserve_if_not()
+
+    # free the module in case it is reserved by others
+    await module.free(False)
+
+    # reserve the port
+    await port.reserve()
+
+    # reset port
     await port.reset()
 
+
     #----------------------------------------------
-    # Flow configuration on a port
+    # Port configuration
     # ---------------------------------------------
-    #region Flow configuration on a port
+    # region Port configuration
+    port_config = await port.config.get()
+    port_config.comment = "My Chimera Port"
+
+    port_config.set_autoneg_on()
+    port_config.set_autoneg_off()
+
+    port_config.set_fcs_error_mode_discard()
+    port_config.set_fcs_error_mode_pass()
+
+    port_config.set_link_flap(enable=enums.OnOff.ON, duration=100, period=1000, repetition=0)
+    port_config.set_link_flap_off()
+
+    port_config.set_pma_error_pulse(enable=enums.OnOff.ON, duration=100, period=1000, repetition=0, coeff=100, exp=-4)
+    port_config.set_pma_error_pulse_off()
+
+    port_config.set_impairment_off()
+    port_config.set_impairment_on()
+
+    await port.config.set(port_config)
+
+    # endregion
+
+    #----------------------------------------------
+    # Flow configuration + basic filter on a port
+    # ---------------------------------------------
+    # region Flow configuration + basic filter on a port
 
     # Configure flow properties
     flow = port.flows[FLOW_IDX]
@@ -57,7 +100,6 @@ async def my_awesome_func():
     ethernet_subfilter.include()
     ethernet_subfilter.src_addr.on(value=dataset.Hex("AAAAAAAAAAAA"), mask=dataset.Hex("FFFFFFFFFFFF"))
     ethernet_subfilter.dest_addr.on(value=dataset.Hex("BBBBBBBBBBBB"), mask=dataset.Hex("FFFFFFFFFFFF"))
-
 
     #------------------
     # Layer 2+ subfilter
@@ -149,7 +191,7 @@ async def my_awesome_func():
     layer_xena_subfilter.off()
     layer_xena_subfilter.exclude()
     layer_xena_subfilter.include()
-    # layer_xena_subfilter.configs
+    layer_xena_subfilter.configs
 
 
     #------------------
@@ -166,7 +208,37 @@ async def my_awesome_func():
     layer_any_subfilter.on(position=0, value=dataset.Hex("112233445566"), mask=dataset.Hex("112233445566"))
 
 
+    # Enable and apply the basic filter settings
     await basic_filter.set(basic_filter_config)
+    await shadow_filter.enable()
+    await shadow_filter.apply()
+
+    # endregion
+
+    #----------------------------------------------
+    # Flow configuration + extended filter on a port
+    # ---------------------------------------------
+    # region Flow configuration + extended filter on a port
+
+    # Configure flow properties
+    flow = port.flows[FLOW_IDX]
+    flow_config = await flow.get()
+    flow_config.comment = "On VLAN 111"
+    await flow.set(config=flow_config)
+
+    # Initialize shadow filter on the flow
+    shadow_filter = flow.shadow_filter
+    await shadow_filter.init()
+    await shadow_filter.clear()
+
+    # Configure shadow filter to EXTENDED mode
+    extended_filter = await shadow_filter.use_extended_mode()
+    extended_filter_config = await extended_filter.get()
+
+    # extended_filter_config.protocol_segments =
+
+    
+    await extended_filter.set(extended_filter_config)
     await shadow_filter.enable()
     await shadow_filter.apply()
 
@@ -175,7 +247,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Drop
     # ---------------------------------------------
-    #region Impairment - Drop
+    # region Impairment - Drop
 
     # Fixed Burst distribution for impairment Drop
     dist = distributions.drop.FixedBurst(burst_size=5)
@@ -250,7 +322,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Misordering
     # ---------------------------------------------
-    #region Impairment - Misordering
+    # region Impairment - Misordering
 
     # Fixed Burst distribution for impairment Misordering
     dist = distributions.misordering.FixedBurst(burst_size=1)
@@ -274,7 +346,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Latency & Jitter
     # ---------------------------------------------
-    #region Impairment - Latency & Jitter
+    # region Impairment - Latency & Jitter
 
     # Fixed Burst distribution for impairment Latency & Jitter
     dist = distributions.latency_jitter.ConstantDelay(delay=100)
@@ -327,7 +399,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Duplication
     # ---------------------------------------------
-    #region Impairment - Duplication
+    # region Impairment - Duplication
 
     # Fixed Burst distribution for impairment Duplication
     dist = distributions.duplication.FixedBurst(burst_size=5)
@@ -402,7 +474,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Corruption
     # ---------------------------------------------
-    #region Impairment - Corruption
+    # region Impairment - Corruption
 
     # Fixed Burst distribution for impairment Corruption
     dist = distributions.corruption.FixedBurst(burst_size=5)
@@ -481,7 +553,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Bandwidth Control - Policer
     # ---------------------------------------------
-    #region Bandwidth Control - Policer
+    # region Bandwidth Control - Policer
 
     # Set and start bandwidth control Policer
     policer_config = await flow.policer.get()
@@ -497,8 +569,6 @@ async def my_awesome_func():
     policer_config.set_on()
     policer_config.set_on_off(on_off=enums.OnOff.OFF)
     policer_config.set_off()
-    policer_config.apply()
-    policer_config.start()
     await flow.policer.start(policer_config)
     await flow.policer.stop(policer_config)
 
@@ -507,7 +577,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Bandwidth Control - Shaper
     # ---------------------------------------------
-    #region Bandwidth Control - Shaper
+    # region Bandwidth Control - Shaper
 
     # Set and start bandwidth control Shaper
     shaper_config = await flow.shaper.get()
@@ -524,9 +594,30 @@ async def my_awesome_func():
     shaper_config.set_on()
     shaper_config.set_on_off(on_off=enums.OnOff.OFF)
     shaper_config.set_off()
-    shaper_config.apply()
-    shaper_config.start()
     await flow.shaper.start(shaper_config)
     await flow.shaper.stop(shaper_config)
 
     #endregion
+
+
+    #----------------------------------------------
+    # Statistics
+    # ---------------------------------------------
+    # region Statistics
+
+    # flow = await self.__use_flow(self.flow_id)
+    # while not self.stop_event.is_set():
+    #     rx = await flow.statistics.rx.total.get()
+    #     drop = await flow.statistics.total.dropped.get()
+    #     logger.debug(f"total received packet: {rx.packet_count}, total dropped: {drop.pkt_drop_count_total}")
+    #     await asyncio.sleep(1)
+
+    #endregion
+
+async def main() -> None:
+    stop_event = asyncio.Event()
+    await my_awesome_func(stop_event=stop_event)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
