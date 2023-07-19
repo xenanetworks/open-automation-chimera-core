@@ -543,9 +543,10 @@ class ShadowFilterConfigTPLDID:
 @dataclass
 class FilterProtocolTPLD:
     match_action: enums.InfoAction = enums.InfoAction.INCLUDE
-    _configs: List[ShadowFilterConfigTPLDID] =  field(default_factory=lambda: [ShadowFilterConfigTPLDID(filter_index=i) for i in range(16)])
+    _configs: List[ShadowFilterConfigTPLDID] = field(default_factory=lambda: [ShadowFilterConfigTPLDID(filter_index=i) for i in range(TPLD_FILTERS_LENGTH)])
 
     def __getitem__(self, tpld_id_index: int) -> ShadowFilterConfigTPLDID:
+        assert 0 <= tpld_id_index < TPLD_FILTERS_LENGTH
         return self._configs[tpld_id_index]
 
     def __setitem__(self, tpld_id_index: int, tpld_id: ShadowFilterConfigTPLDID) -> None:
