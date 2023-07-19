@@ -1,6 +1,6 @@
 import ipaddress
 from dataclasses import dataclass, field
-from typing import Any,  Protocol, Tuple
+from typing import Any, List, Protocol, Tuple
 
 from xoa_driver.v2.misc import Hex
 
@@ -220,22 +220,39 @@ class ShadowFilterConfigTPLDID:
     tpld_id: int = 0
     use: enums.OnOff = enums.OnOff.OFF
 
-    def on(self, tpld_id: int) -> None:
-        self.use = enums.OnOff.ON
+    def toggle(self, status: enums.OnOff, tpld_id: int = 0) -> None:
+        self.use = status
         self.tpld_id = tpld_id
+
+    def on(self, tpld_id: int = 0) -> None:
+        self.toggle(enums.OnOff.ON, tpld_id)
+
+    def off(self, tpld_id: int = 0) -> None:
+        self.toggle(enums.OnOff.OFF, tpld_id)
 
 
 @dataclass
-class FilterProtocolTPLD(FilterConfigCommon):
-    configs: Tuple[ShadowFilterConfigTPLDID, ...] = tuple(ShadowFilterConfigTPLDID(filter_index=i) for i in range(16))
+class FilterProtocolTPLD:
+    match_action: enums.InfoAction = enums.InfoAction.INCLUDE
+    _configs: List[ShadowFilterConfigTPLDID] =  field(default_factory=lambda: [ShadowFilterConfigTPLDID(filter_index=i) for i in range(16)])
 
+    def __getitem__(self, tpld_id_index: int) -> ShadowFilterConfigTPLDID:
+        return self._configs[tpld_id_index]
+
+    def __setitem__(self, tpld_id_index: int, tpld_id: ShadowFilterConfigTPLDID) -> None:
+        self._configs[tpld_id_index] = tpld_id
+
+    def include(self) -> None:
+        self.match_action = enums.InfoAction.INCLUDE
+
+    def exclude(self) -> None:
+        self.match_action = enums.InfoAction.EXCLUDE
 
 @dataclass
 class FilterLayerXena:
     tpld: FilterProtocolTPLD = field(default_factory=FilterProtocolTPLD)
 
     def use_tpld(self) -> FilterProtocolTPLD:
-        self.tpld.__use_and()
         return self.tpld
 
 
