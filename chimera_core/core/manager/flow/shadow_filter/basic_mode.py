@@ -160,8 +160,8 @@ class ShadowFilterBasic:
         use_xena = FilterLayerXena(
             tpld=FilterProtocolTPLD(
                 match_action=tpld.action,
-                configs=tuple(tpld_id_configs)),
-            )
+                _configs=tpld_id_configs,
+            ))
 
         config_any = FilterLayerAny(
             filter_use=any_setting.use,
@@ -288,11 +288,11 @@ class ShadowFilterBasic:
             )
 
     def set_layer_xena(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
-        if not config.layer_xena.tpld.is_off:
-            yield self.basic_mode.tpld.settings.set(action=config.layer_xena.tpld.match_action)
-            for i, tpld_filter in enumerate(self.basic_mode.tpld.test_payload_filters_config):
-                yield tpld_filter.set(use=config.layer_xena.tpld.configs[i].use, id=config.layer_xena.tpld.configs[i].tpld_id)
+        yield self.basic_mode.tpld.settings.set(action=config.layer_xena.tpld.match_action)
+        for i, tpld_filter in enumerate(self.basic_mode.tpld.test_payload_filters_config):
+            yield tpld_filter.set(use=config.layer_xena.tpld._configs[i].use, id=config.layer_xena.tpld._configs[i].tpld_id)
 
+    def set_layer_any(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
         if not config.layer_any.any_field.is_off:
             yield self.basic_mode.any.settings.set(use=config.layer_any.any_field.filter_use, action=config.layer_any.any_field.match_action)
             yield self.basic_mode.any.config.set(
@@ -309,6 +309,7 @@ class ShadowFilterBasic:
                 self.set_layer_3(config),
                 self.set_layer_4(config),
                 self.set_layer_xena(config),
+                self.set_layer_any(config),
             ),
             return_exceptions=False,
         )
