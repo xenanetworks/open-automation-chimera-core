@@ -91,5 +91,5 @@ class MainController:
 
         manager = TesterManager(tester_instance)
         if reserve:
-            await manager.reserve_if_not()
+            await manager.reserve()
         return manager

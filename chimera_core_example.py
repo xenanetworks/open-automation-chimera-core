@@ -1,58 +1,253 @@
 import asyncio
 from functools import partial
 from typing import List
-
+from ipaddress import IPv4Address, IPv6Address
 from loguru import logger
 
 from chimera_core.controller import MainController
 from chimera_core.types import distributions, enums, dataset
 
-CHASSIS_IP = "10.20.1.166"
+CHASSIS_IP = "10.20.30.42"
 USERNAME = "chimeracore"
 MODULE_IDX = 2
 PORT_IDX = 0
 FLOW_IDX = 1
 
-async def my_awesome_func():
+async def my_awesome_func(stop_event: asyncio.Event):
 
+    # create credential object
     credentials = dataset.Credentials(
         product=dataset.EProductType.VALKYRIE,
         host=CHASSIS_IP)
     
+    # create chimera core controller object
     controller = await MainController()
+
+    # add chimera emulator into the chassis inventory and get the ID
     tester_id = await controller.add_tester(credentials=credentials)
 
+    # create tester object
     tester = await controller.use(tester_id, username=USERNAME, reserve=False, debug=False)
 
+    # create module object and reserve the module
+    module = await tester.use_module(module_id=MODULE_IDX, reserve=True)
+
+    # create port object and reserver the port
     port = await tester.use_port(module_id=MODULE_IDX, port_id=PORT_IDX, reserve=True)
-    await port.reserve_if_not()
+
+    # free the module in case it is reserved by others
+    await module.free(False)
+
+    # reserve the port
+    await port.reserve()
+
+    # reset port
     await port.reset()
 
+
+    #----------------------------------------------
+    # Port configuration
+    # ---------------------------------------------
+    # region Port configuration
+    port_config = await port.config.get()
+    port_config.comment = "My Chimera Port"
+
+    port_config.set_autoneg_on()
+    port_config.set_autoneg_off()
+
+    port_config.set_fcs_error_mode_discard()
+    port_config.set_fcs_error_mode_pass()
+
+    port_config.set_link_flap(enable=enums.OnOff.ON, duration=100, period=1000, repetition=0)
+    port_config.set_link_flap_off()
+
+    port_config.set_pma_error_pulse(enable=enums.OnOff.ON, duration=100, period=1000, repetition=0, coeff=100, exp=-4)
+    port_config.set_pma_error_pulse_off()
+
+    port_config.set_impairment_off()
+    port_config.set_impairment_on()
+
+    await port.config.set(port_config)
+
+    # endregion
+
+    #----------------------------------------------
+    # Flow configuration + basic filter on a port
+    # ---------------------------------------------
+    # region Flow configuration + basic filter on a port
+
+    # Configure flow properties
     flow = port.flows[FLOW_IDX]
     flow_config = await flow.get()
     flow_config.comment = "On VLAN 111"
     await flow.set(config=flow_config)
 
+    # Initialize shadow filter on the flow
     shadow_filter = flow.shadow_filter
-    await shadow_filter.clear()
     await shadow_filter.init()
-
+    await shadow_filter.clear()
+    
+    # Configure shadow filter to BASIC mode
     basic_filter = await shadow_filter.use_basic_mode()
     basic_filter_config = await basic_filter.get()
-    ethernet_field = basic_filter_config.layer_2.use_ethernet()
-    ethernet_field.src_addr.on(value=dataset.Hex("AAAAAAAAAAAA"), mask=dataset.Hex("FFFFFFFFFFFF"))
-    ethernet_field.dest_addr.on(value=dataset.Hex("BBBBBBBBBBBB"), mask=dataset.Hex("FFFFFFFFFFFF"))
-    vlan_tag_field = basic_filter_config.layer_2_plus.use_1_vlan_tag()
-    vlan_tag_field.include()
-    vlan_tag_field.tag_inner.on(value=111, mask=dataset.Hex("0FFF"))
+
+    #------------------
+    # Ethernet subfilter
+    #------------------
+    # Use and configure basic-mode shadow filter's Ethernet subfilter
+    ethernet_subfilter = basic_filter_config.layer_2.use_ethernet()
+    ethernet_subfilter.exclude()
+    ethernet_subfilter.include()
+    ethernet_subfilter.src_addr.on(value=dataset.Hex("AAAAAAAAAAAA"), mask=dataset.Hex("FFFFFFFFFFFF"))
+    ethernet_subfilter.dest_addr.on(value=dataset.Hex("BBBBBBBBBBBB"), mask=dataset.Hex("FFFFFFFFFFFF"))
+
+    #------------------
+    # Layer 2+ subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer 2+ subfilter
+    layer_2_plus_subfilter = basic_filter_config.layer_2_plus.use_none()
+
+    # Use and configure basic-mode shadow filter's Layer2+ subfilter (One VLAN tag)
+    layer_2_plus_subfilter = basic_filter_config.layer_2_plus.use_1_vlan_tag()
+    layer_2_plus_subfilter.off()
+    layer_2_plus_subfilter.exclude()
+    layer_2_plus_subfilter.include()
+    layer_2_plus_subfilter.tag_inner.on(value=1234, mask=dataset.Hex("FFF"))
+    layer_2_plus_subfilter.pcp_inner.on(value=3, mask=dataset.Hex("7"))
+
+    # Use and configure basic-mode shadow filter's Layer2+ subfilter (Two VLAN tag)
+    layer_2_plus_subfilter = basic_filter_config.layer_2_plus.use_2_vlan_tags()
+    layer_2_plus_subfilter.off()
+    layer_2_plus_subfilter.exclude()
+    layer_2_plus_subfilter.include()
+    layer_2_plus_subfilter.tag_inner.on(value=1234, mask=dataset.Hex("FFF"))
+    layer_2_plus_subfilter.pcp_inner.on(value=3, mask=dataset.Hex("7"))
+    layer_2_plus_subfilter.tag_outer.on(value=2345, mask=dataset.Hex("FFF"))
+    layer_2_plus_subfilter.pcp_outer.on(value=0, mask=dataset.Hex("7"))
+
+    # Use and configure basic-mode shadow filter's Layer2+ subfilter (MPLS)
+    layer_2_plus_subfilter = basic_filter_config.layer_2_plus.use_mpls()
+    layer_2_plus_subfilter.off()
+    layer_2_plus_subfilter.exclude()
+    layer_2_plus_subfilter.include()
+    layer_2_plus_subfilter.label.on(value=1000, mask=dataset.Hex("FFFFF"))
+    layer_2_plus_subfilter.toc.on(value=0, mask=dataset.Hex("7"))
+
+
+    #------------------
+    # Layer 3 subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer 3 subfilter
+    layer_3_subfilter = basic_filter_config.layer_3.use_none()
+    
+    # Use and configure basic-mode shadow filter's Layer 3 subfilter (IPv4)
+    layer_3_subfilter = basic_filter_config.layer_3.use_ipv4()
+    layer_3_subfilter.off()
+    layer_3_subfilter.exclude()
+    layer_3_subfilter.include()
+    layer_3_subfilter.src_addr.on(value=IPv4Address("10.0.0.2"), mask=dataset.Hex("FFFFFFFF"))
+    layer_3_subfilter.dest_addr.on(value=IPv4Address("11.0.0.2"), mask=dataset.Hex("FFFFFFFF"))
+    layer_3_subfilter.dscp.on(value=0, mask=dataset.Hex("FC"))
+
+    # Use and configure basic-mode shadow filter's Layer 3 subfilter (IPv6)
+    layer_3_subfilter = basic_filter_config.layer_3.use_ipv6()
+    layer_3_subfilter.exclude()
+    layer_3_subfilter.include()
+    layer_3_subfilter.src_addr.on(value=IPv6Address("2001::2"), mask=dataset.Hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"))
+    layer_3_subfilter.dest_addr.on(value=IPv6Address("2002::2"), mask=dataset.Hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"))
+
+
+    #------------------
+    # Layer 4 subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer 4 subfilter
+    layer_4_subfilter = basic_filter_config.layer_4.use_none()
+    
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    layer_4_subfilter = basic_filter_config.layer_4.use_tcp()
+    layer_4_subfilter.off()
+    layer_4_subfilter.exclude()
+    layer_4_subfilter.include()
+    layer_4_subfilter.src_port.on(value=1234, mask=dataset.Hex("FFFF"))
+    layer_4_subfilter.dest_port.on(value=80, mask=dataset.Hex("FFFF"))
+
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (UDP)
+    layer_4_subfilter = basic_filter_config.layer_4.use_udp()
+    layer_4_subfilter.off()
+    layer_4_subfilter.exclude()
+    layer_4_subfilter.include()
+    layer_4_subfilter.src_port.on(value=1234, mask=dataset.Hex("FFFF"))
+    layer_4_subfilter.dest_port.on(value=80, mask=dataset.Hex("FFFF"))
+
+
+    #------------------
+    # Layer Xena subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer Xena subfilter
+    layer_xena_subfilter = basic_filter_config.layer_xena.use_none()
+
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    layer_xena_subfilter = basic_filter_config.layer_xena.use_tpld()
+    layer_xena_subfilter.off()
+    layer_xena_subfilter.exclude()
+    layer_xena_subfilter.include()
+    layer_xena_subfilter.configs
+
+
+    #------------------
+    # Layer Any subfilter
+    #------------------
+    # Not use basic-mode shadow filter's Layer Any subfilter
+    layer_any_subfilter = basic_filter_config.layer_any.use_none()
+
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    layer_any_subfilter = basic_filter_config.layer_any.use_any_field()
+    layer_any_subfilter.off()
+    layer_any_subfilter.exclude()
+    layer_any_subfilter.include()
+    layer_any_subfilter.on(position=0, value=dataset.Hex("112233445566"), mask=dataset.Hex("112233445566"))
+
+
+    # Enable and apply the basic filter settings
     await basic_filter.set(basic_filter_config)
     await shadow_filter.enable()
     await shadow_filter.apply()
 
+    # endregion
+
+    #----------------------------------------------
+    # Flow configuration + extended filter on a port
+    # ---------------------------------------------
+    # region Flow configuration + extended filter on a port
+
+    # Configure flow properties
+    flow = port.flows[FLOW_IDX]
+    flow_config = await flow.get()
+    flow_config.comment = "On VLAN 111"
+    await flow.set(config=flow_config)
+
+    # Initialize shadow filter on the flow
+    shadow_filter = flow.shadow_filter
+    await shadow_filter.init()
+    await shadow_filter.clear()
+
+    # Configure shadow filter to EXTENDED mode
+    extended_filter = await shadow_filter.use_extended_mode()
+    extended_filter_config = await extended_filter.get()
+
+    # extended_filter_config.protocol_segments =
+
+    
+    await extended_filter.set(extended_filter_config)
+    await shadow_filter.enable()
+    await shadow_filter.apply()
+
+    # endregion
+
     #----------------------------------------------
     # Impairment - Drop
     # ---------------------------------------------
-    #region Impairment - Drop
+    # region Impairment - Drop
 
     # Fixed Burst distribution for impairment Drop
     dist = distributions.drop.FixedBurst(burst_size=5)
@@ -127,7 +322,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Misordering
     # ---------------------------------------------
-    #region Impairment - Misordering
+    # region Impairment - Misordering
 
     # Fixed Burst distribution for impairment Misordering
     dist = distributions.misordering.FixedBurst(burst_size=1)
@@ -141,6 +336,7 @@ async def my_awesome_func():
 
     # Set distribution and start impairment Misordering
     misordering_config = await flow.misordering.get()
+    misordering_config.depth = 1
     misordering_config.set_distribution(dist)
     await flow.misordering.start(misordering_config)
     await flow.misordering.stop(misordering_config)
@@ -150,10 +346,10 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Latency & Jitter
     # ---------------------------------------------
-    #region Impairment - Latency & Jitter
+    # region Impairment - Latency & Jitter
 
     # Fixed Burst distribution for impairment Latency & Jitter
-    dist = distributions.latency_jitter.ConstantDelay(delay=1000)
+    dist = distributions.latency_jitter.ConstantDelay(delay=100)
 
 
     # Random Burst distribution for impairment Latency & Jitter
@@ -203,7 +399,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Duplication
     # ---------------------------------------------
-    #region Impairment - Duplication
+    # region Impairment - Duplication
 
     # Fixed Burst distribution for impairment Duplication
     dist = distributions.duplication.FixedBurst(burst_size=5)
@@ -278,7 +474,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Impairment - Corruption
     # ---------------------------------------------
-    #region Impairment - Corruption
+    # region Impairment - Corruption
 
     # Fixed Burst distribution for impairment Corruption
     dist = distributions.corruption.FixedBurst(burst_size=5)
@@ -357,7 +553,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Bandwidth Control - Policer
     # ---------------------------------------------
-    #region Bandwidth Control - Policer
+    # region Bandwidth Control - Policer
 
     # Set and start bandwidth control Policer
     policer_config = await flow.policer.get()
@@ -373,8 +569,6 @@ async def my_awesome_func():
     policer_config.set_on()
     policer_config.set_on_off(on_off=enums.OnOff.OFF)
     policer_config.set_off()
-    policer_config.apply()
-    policer_config.start()
     await flow.policer.start(policer_config)
     await flow.policer.stop(policer_config)
 
@@ -383,7 +577,7 @@ async def my_awesome_func():
     #----------------------------------------------
     # Bandwidth Control - Shaper
     # ---------------------------------------------
-    #region Bandwidth Control - Shaper
+    # region Bandwidth Control - Shaper
 
     # Set and start bandwidth control Shaper
     shaper_config = await flow.shaper.get()
@@ -400,9 +594,28 @@ async def my_awesome_func():
     shaper_config.set_on()
     shaper_config.set_on_off(on_off=enums.OnOff.OFF)
     shaper_config.set_off()
-    shaper_config.apply()
-    shaper_config.start()
     await flow.shaper.start(shaper_config)
     await flow.shaper.stop(shaper_config)
 
     #endregion
+
+
+    #----------------------------------------------
+    # Statistics
+    # ---------------------------------------------
+    # region Statistics
+
+    rx_total = await flow.statistics.rx.total.get()
+    tx_total = await flow.statistics.tx.total.get()
+    drop = await flow.statistics.total.dropped.get()
+
+
+    #endregion
+
+async def main() -> None:
+    stop_event = asyncio.Event()
+    await my_awesome_func(stop_event=stop_event)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

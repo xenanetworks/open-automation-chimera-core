@@ -8,7 +8,9 @@ from chimera_core.core.utils.helper import TypeResouces, reserve_resources
 class ReserveMixin:
     resource_instance: TypeResouces
 
-    async def reserve_if_not(self) -> None:
+    async def reserve(self) -> None:
+        """Reserve the resource if it is not reserved already.
+        """
         coroutines = []
         if isinstance(self.resource_instance, L23Tester):
             coroutines.extend(
@@ -19,3 +21,10 @@ class ReserveMixin:
 
         asyncio.gather(*coroutines)
         await reserve_resources(self.resource_instance)
+
+    async def free(self, should_free_sub_resources: bool) -> None:
+        """Free the resource. 
+
+        :param should_free_sub_resources: specifies if its sub resources are also to be freed.
+        :type should_free_sub_resources: bool
+        """
