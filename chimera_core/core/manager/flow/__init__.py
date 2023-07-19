@@ -12,7 +12,7 @@ from .shadow_filter import ShadowFilterManager
 
 
 if TYPE_CHECKING:
-    from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CFlow
+    from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CFlow, CPerFlowStats
 
 from .__dataset import FlowConfig
 
@@ -23,14 +23,14 @@ class FlowManager:
         self.shadow_filter = ShadowFilterManager(flow.shadow_filter)
         """
         Flow filters can be updated during runtime with traffic applied to the input ports.
-        
+
         To guarantee that filtering is always coherent, Chimera implements two sets of registers in the flow filters:
-        
+
         * Working registers: used for flow filtering.
         * Shadow registers: used for updating flow filters.
-        
+
         All registers in the flow filters have both a working register and a shadow register.
-        
+
         Shadow registers can be written and read, while working registers can only be read.
         """
 
@@ -42,7 +42,7 @@ class FlowManager:
         self.misordering = ImpairmentMisordering(flow.misordering)
         """
         Misordering causes packets to be taken out of the Ethernet packet flow and delayed for a configurable number of packets, after which they are re-inserted into the packet flow. The number of packets that the packet is delayed is referred to as the Misorder Depth.
-        
+
         At any point in time, only a single packet can be in queue to be re-inserted. As a result, the following limitation applies to the values of probability and depth.
         """
 
@@ -54,7 +54,7 @@ class FlowManager:
         self.duplication = ImpairmentDuplication(flow.duplication)
         """
         Packet duplication will duplicate a packet, so the packet is transmitted twice in the Ethernet packet flow. The duplicate packet is inserted right after the original packet.
-        
+
         Notice that packet duplication is located after the shapers, just before the Tx port in the impairment pipeline. This means enabling packet duplication will add packets to the packet flow after the shapers, hereby increasing the BW compared to what was configured in the shaper.
         """
 
@@ -68,11 +68,11 @@ class FlowManager:
         * UDP
 
         Corruption is done by altering a bit in the checksum for the configured protocol. Furthermore, when corruption is done at IP / TCP / UDP level, the Ethernet FCS is corrected, so the checksum error only appears at the configured level.
-        
+
         Note: when configuring corruption at IP / TCP / UDP level, the flow filter must include the selected layer in the flow filter.
-        
+
         I.e., if corruption is configured at the UDP level, the flow filter must include all relevant protocols:
-        
+
         * Ethernet
         * (optionally) VLAN(s) / MPLS
         * IPv4 / IPv6
@@ -89,7 +89,7 @@ class FlowManager:
         self.shaper = ImpairmentShaper(flow.shaper)
         """
         Notice that the shapers are located before the packet duplication in the impairment pipeline. I.e., if packet duplication is configured, duplicate packets are added to the flow after the shaper, and the resulting output bandwidth will be higher than the one configured in the shaper.
-        
+
         Furthermore, the amount of memory allocated for the shaper buffer will be taken from the buffer used for generating latency, so when memory is allocated for shaper buffering, the guaranteed lossless latency will decrease accordingly.
         """
 
@@ -113,7 +113,7 @@ class FlowManager:
         await self.__flow.comment.set(comment=config.comment)
 
     @property
-    def statistics(self) -> Any:
+    def statistics(self) -> "CPerFlowStats":
         """Return the flow statistics
 
         :return: flow statistics
