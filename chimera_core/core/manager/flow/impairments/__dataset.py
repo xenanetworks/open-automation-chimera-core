@@ -179,15 +179,15 @@ distribution_class: Dict[str, Type[DistributionConfigBase]] = {
 @dataclass
 class ImpairmentConfigBase(ABC):
     @abstractmethod
-    def start(self, impairment: TImpairmentGeneral) -> GeneratorToken:
+    def _start(self, impairment: TImpairmentGeneral) -> GeneratorToken:
         raise NotImplementedError
 
     @abstractmethod
-    def stop(self, impairment: TImpairmentGeneral) -> GeneratorToken:
+    def _stop(self, impairment: TImpairmentGeneral) -> GeneratorToken:
         raise NotImplementedError
 
     @abstractmethod
-    def apply(self, impairment: TImpairmentGeneral) -> GeneratorToken:
+    def _apply(self, impairment: TImpairmentGeneral) -> GeneratorToken:
         raise NotImplementedError
 
 
@@ -198,22 +198,22 @@ class ImpairmentConfigGeneral(ImpairmentConfigBase):
     _current_distribution: Optional[DistributionConfigBase] = None
     enable: enums.OnOff = enums.OnOff.OFF
 
-    def apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
-        yield from self.apply_distribution(impairment)
+    def _apply(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
+        yield from self._apply_distribution(impairment)
 
-    def apply_distribution(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
+    def _apply_distribution(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         if self._current_distribution:
-            yield from self._current_distribution.apply(impairment)
+            yield from self._current_distribution._apply(impairment)
         else:
             raise DistributionNotSetError()
 
-    def stop(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
+    def _stop(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         self.enable = enums.OnOff.OFF
         yield impairment.enable.set(self.enable)
 
-    def start(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
+    def _start(self, impairment: TImpairmentWithDistribution) -> GeneratorToken:
         self.enable = enums.OnOff.ON
-        yield from self.apply_distribution(impairment)
+        yield from self._apply_distribution(impairment)
         yield impairment.enable.set(enums.OnOff.ON)
 
     def get_current_distribution(self) -> Optional[DistributionConfigBase]:
@@ -270,7 +270,7 @@ class ImpairmentConfigPolicer(OnOffMixin, PolicerModeMixin):
     Committed Burst Size (CBS) in frames.
     """
 
-    async def apply(self, impairment: CPolicerImpairment) -> None:
+    async def _apply(self, impairment: CPolicerImpairment) -> None:
         impairment.config.set(
             on_off=self.on_off,
             mode=self.mode,
@@ -279,7 +279,7 @@ class ImpairmentConfigPolicer(OnOffMixin, PolicerModeMixin):
         )
 
 
-    def start(self, impairment: CPolicerImpairment) -> GeneratorToken:
+    def _start(self, impairment: CPolicerImpairment) -> GeneratorToken:
         yield impairment.config.set(
             on_off=enums.OnOff.ON,
             mode=self.mode,
@@ -324,7 +324,7 @@ class ImpairmentConfigShaper(OnOffMixin, PolicerModeMixin):
     The amount of memory allocated for the shaper buffer will be taken from the buffer used for generating latency, so when memory is allocated for shaper buffering, the guaranteed lossless latency will decrease accordingly.
     """
 
-    def apply(self, impairment: CShaperImpairment) -> GeneratorToken:
+    def _apply(self, impairment: CShaperImpairment) -> GeneratorToken:
         yield impairment.config.set(
             on_off=self.on_off,
             mode=self.mode,
@@ -334,7 +334,7 @@ class ImpairmentConfigShaper(OnOffMixin, PolicerModeMixin):
         )
 
 
-    def start(self, impairment: CShaperImpairment) -> GeneratorToken:
+    def _start(self, impairment: CShaperImpairment) -> GeneratorToken:
         yield impairment.config.set(
             on_off=enums.OnOff.ON,
             mode=self.mode,
@@ -348,15 +348,15 @@ class ImpairmentConfigShaper(OnOffMixin, PolicerModeMixin):
 class ImpairmentConfigCorruption(ImpairmentConfigGeneral):
     corruption_type: enums.CorruptionType = enums.CorruptionType.ETH
 
-    def apply(self, impairment: CCorruptionImpairment) -> GeneratorToken:
+    def _apply(self, impairment: CCorruptionImpairment) -> GeneratorToken:
         yield impairment.type.set(self.corruption_type)
-        yield from super().apply(impairment)
+        yield from super()._apply(impairment)
 
 
 @dataclass
 class ImpairmentConfigMisordering(ImpairmentConfigGeneral):
     depth: int = 0
 
-    def apply(self, impairment: CMisorderingImpairment) -> GeneratorToken:
+    def _apply(self, impairment: CMisorderingImpairment) -> GeneratorToken:
         yield impairment.depth.set(self.depth)
-        yield from super().apply(impairment)
+        yield from super()._apply(impairment)

@@ -35,11 +35,11 @@ class ImpairmentManagerBase(Generic[TImpairmentGeneral]):
     async def toggle(self, state: bool, config: Optional[ImpairmentConfigBase] = None) -> None:
         config = config or self.config
         assert config, "Config not exists"
-        await asyncio.gather(*config.start(self.impairment) if state else config.stop(self.impairment))
+        await asyncio.gather(*config._start(self.impairment) if state else config._stop(self.impairment))
 
     async def set(self, config: ImpairmentConfigBase) -> None:
         self.config = config
-        await asyncio.gather(*config.apply(self.impairment))
+        await asyncio.gather(*config._apply(self.impairment))
 
 
 TImpairmentWithDistribution = TypeVar(
