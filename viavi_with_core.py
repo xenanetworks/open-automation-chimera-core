@@ -30,7 +30,7 @@ class CoreExample:
 
     async def add_custom_distribution(self, linear: bool, data_x: List[int], comment: str) -> dataset.CustomDistribution:
         port = await self.__use_example_port(reserve=False)
-        await port.reserve_if_not()
+        await port.reserve()
         cd = await port.custom_distributions.add(
             linear=linear,
             entry_count=len(data_x),
@@ -57,34 +57,20 @@ class CoreExample:
         vlan_tag.pcp_inner.off(value=0, mask=dataset.Hex("07"))
         vlan_tag.tag_outer.off(value=20, mask=dataset.Hex("0FFF"))
         vlan_tag.pcp_inner.off(value=0, mask=dataset.Hex("07"))
+
+        xena = basic_filter_config.layer_xena.use_tpld()
+        xena[0].on(tpld_id=123)
+        xena[1].off()
         await basic_filter.set(basic_filter_config)
         await flow.shadow_filter.enable()
         await flow.shadow_filter.apply()
 
-        drop_config = await flow.drop.get()
-        fixed_burst = distributions.drop.FixedBurst(burst_size=5) # short or long api
-        fixed_burst.repeat(5)
-        drop_config.set_distribution(fixed_burst)
 
-        example_custom_distribution = await self.add_custom_distribution(
-            linear=False,
-            data_x=[0, 1] * 256,
-            comment="Example Custom Distribution"
-        )
-        custom = distributions.drop.Custom(custom_distribution=example_custom_distribution)
-        custom.repeat_pattern(duration=2, period=6)
-        drop_config.set_distribution(custom)
-        await flow.drop.start(drop_config)
-
-        latency_jitter_config = await flow.latency_jitter.get()
-        constant_delay = distributions.latency_jitter.ConstantDelay(delay=100000)
-        latency_jitter_config.set_distribution(constant_delay)
-        await flow.latency_jitter.start(latency_jitter_config)
 
     async def configure_resources(self) -> None:
         await self.init_resources()
         port = await self.__use_example_port(reserve=False)
-        await port.reserve_if_not()
+        await port.reserve()
         flow_one = port.flows[self.flow_id]
         await self.configure_flow(flow_one)
 
@@ -100,9 +86,9 @@ class CoreExample:
         port = await self.__use_example_port(reserve=True)
         port_config = await port.config.get()
         if is_set_on:
-            port_config.set_emulate_on()
+            port_config.set_impairment_on()
         else:
-            port_config.set_emulate_off()
+            port_config.set_impairment_off()
         await port.config.set(port_config)
 
     async def stop(self) -> None:
