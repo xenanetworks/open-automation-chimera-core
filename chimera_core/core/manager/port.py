@@ -4,6 +4,9 @@ from typing import Dict, Generator, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from xoa_driver.v2.ports import PortChimera
+    from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
+        StatisticsTotals
+    )
 
 from xoa_driver import utils
 from xoa_driver.enums import OnOff
@@ -91,6 +94,14 @@ class PortConfigurator:
             self.port.emulation.drop_fcs_errors.set(config.fcs_error_mode),
         )
 
+    @property
+    def statistics(self) -> "StatisticsTotals":
+        """Return the port statistics
+
+        :return: port statistics
+        :rtype: StatisticsTotals
+        """
+        return self.port.emulation.statistics
 
 
 class CustomDistributionsManager:
