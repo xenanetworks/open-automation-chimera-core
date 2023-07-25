@@ -2,12 +2,11 @@ import asyncio
 from itertools import chain
 
 from loguru import logger
-
 from xoa_driver import utils
-from chimera_core.types import enums
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
 from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
+from chimera_core.types import enums
 from chimera_core.core.manager.__dataset import GeneratorToken
 from .__dataset import (
     TPLD_FILTERS_LENGTH,
@@ -33,6 +32,11 @@ from .__dataset import (
     FilterProtocolTPLD,
     ShadowFilterConfigTPLDID,
     FilterProtocolAnyField,
+    ShadowFilterConfigVLANPCP,
+    ShadowFilterConfigMPLSLabel,
+    ShadowFilterConfigMPLSTOC,
+    ShadowFilterConfigL4DestPort,
+    ShadowFilterConfigL4SrcPort,
 )
 
 
@@ -107,15 +111,15 @@ class ShadowFilterBasic:
             match_action=vlan.action,
             tag_inner=create_protocol_config_common(vlan_tag_inner),
             tag_outer=create_protocol_config_common(vlan_tag_outer),
-            pcp_inner=create_protocol_config_common(vlan_pcp_inner),
-            pcp_outer=create_protocol_config_common(vlan_pcp_outer),
+            pcp_inner=ShadowFilterConfigVLANPCP(value=vlan_pcp_inner.value, mask=vlan_pcp_inner.mask),
+            pcp_outer=ShadowFilterConfigVLANPCP(value=vlan_pcp_outer.value, mask=vlan_pcp_outer.mask),
         )
 
         config_mpls = FilterProtocolL2MPLS(
             filter_use=mpls.use,
             match_action=mpls.action,
-            label=create_protocol_config_common(mpls_label),
-            toc=create_protocol_config_common(mpls_toc),
+            label=ShadowFilterConfigMPLSLabel(value=mpls_label.value, mask=mpls_label.mask),
+            toc=ShadowFilterConfigMPLSTOC(value=mpls_toc.value, mask=mpls_toc.mask),
         )
 
         config_ipv4 = FilterProtocolL3IPv4(
@@ -152,8 +156,8 @@ class ShadowFilterBasic:
         config_tcp = FilterProtocolL4TCP(
             filter_use=tcp.use,
             match_action=tcp.action,
-            src_port=create_protocol_config_common(tcp_src_port),
-            dest_port=create_protocol_config_common(tcp_dest_port),
+            src_port=ShadowFilterConfigL4SrcPort(value=tcp_src_port.value, mask=tcp_src_port.mask),
+            dest_port=ShadowFilterConfigL4DestPort(value=tcp_dest_port.value, mask=tcp_dest_port.mask),
         )
         use_l2plus = FilterLayer2Plus(present=l2.use, vlan=config_vlan, mpls=config_mpls)
         use_l3 = FilterLayer3(present=l3.use, ipv4=config_ipv4, ipv6=config_ipv6)
