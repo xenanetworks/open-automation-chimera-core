@@ -653,3 +653,4 @@ class ProtocolSegement:
 @dataclass
 class ShadowFilterConfigExtended:
     protocol_segments: Tuple[ProtocolSegement, ...] = field(default_factory=tuple)
+    """Protocol segments for the extended shadow filter config"""

@@ -311,6 +311,11 @@ class ShadowFilterBasic:
             )
 
     async def set(self, config: ShadowFilterConfigBasic) -> None:
+        """Set the configuration of the shadow filter that is in basic mode
+
+        :param config: the configuration of the shadow filter that is in basic mode
+        :type config: ShadowFilterConfigBasic
+        """
         await utils.apply(
             *chain(
                 self.set_layer_2(config),

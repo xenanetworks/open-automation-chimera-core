@@ -27,17 +27,39 @@ class ImpairmentManagerBase(Generic[TImpairmentGeneral]):
         self.config: Optional[ImpairmentConfigBase] = None
 
     async def start(self, config: Optional[Any] = None) -> None:
+        """Start the impairment
+
+        :param config: the impairment configuration, defaults to None
+        :type config: Optional[Any], optional
+        """
         await self.toggle(True, config)
 
     async def stop(self, config: Optional[Any] = None) -> None:
+        """Stop the impairment
+
+        :param config: the impairment configuration, defaults to None
+        :type config: Optional[Any], optional
+        """
         await self.toggle(False, config)
 
     async def toggle(self, state: bool, config: Optional[ImpairmentConfigBase] = None) -> None:
+        """Toggle the impairment
+
+        :param state: state of the impairment
+        :type state: bool
+        :param config: the impairment configuration, defaults to None
+        :type config: Optional[ImpairmentConfigBase], optional
+        """
         config = config or self.config
         assert config, "Config not exists"
         await asyncio.gather(*config._start(self.impairment) if state else config._stop(self.impairment))
 
     async def set(self, config: ImpairmentConfigBase) -> None:
+        """Set the impairment
+
+        :param config: the impairment configuration
+        :type config: ImpairmentConfigBase
+        """
         self.config = config
         await asyncio.gather(*config._apply(self.impairment))
 
