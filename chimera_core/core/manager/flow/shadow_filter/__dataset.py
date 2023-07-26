@@ -369,7 +369,7 @@ class ShadowFilterConfigBasicIPv6SRCADDR(ProtocolConfigCommon):
     def on(self, value: ipaddress.IPv6Address = ipaddress.IPv6Address('::'), mask: Hex = Hex('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')) -> None:
         """Enable th match on this field
 
-        :param value: value of the field, defaults to ::
+        :param value: value of the field, defaults to '::'
         :type value: int, optional
         :param mask: value of the mask, defaults to FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
         :type mask: Hex, optional
@@ -381,7 +381,7 @@ class ShadowFilterConfigBasicIPv6SRCADDR(ProtocolConfigCommon):
     def off(self, value: ipaddress.IPv6Address = ipaddress.IPv6Address('::'), mask: Hex = Hex('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF')) -> None:
         """Disable th match on this field
 
-        :param value: value of the field, defaults to ::
+        :param value: value of the field, defaults to '::'
         :type value: int, optional
         :param mask: value of the mask, defaults to FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
         :type mask: Hex, optional
