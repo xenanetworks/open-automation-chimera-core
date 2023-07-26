@@ -166,3 +166,4 @@ pdm.lock
 store
 
 .python-version
+store.db
