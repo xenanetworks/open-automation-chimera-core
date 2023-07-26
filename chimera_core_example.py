@@ -7,9 +7,9 @@ from loguru import logger
 from chimera_core.controller import MainController
 from chimera_core.types import distributions, enums, dataset
 
-CHASSIS_IP = "10.20.30.42"
+CHASSIS_IP = "10.20.1.252"
 USERNAME = "chimeracore"
-MODULE_IDX = 2
+MODULE_IDX = 11
 PORT_IDX = 0
 FLOW_IDX = 1
 
@@ -29,21 +29,21 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # create tester object
     tester = await controller.use(tester_id, username=USERNAME, reserve=False, debug=False)
 
-    # create module object and reserve the module
-    module = await tester.use_module(module_id=MODULE_IDX, reserve=True)
-
-    # create port object and reserver the port
-    port = await tester.use_port(module_id=MODULE_IDX, port_id=PORT_IDX, reserve=True)
+    # create module object
+    module = await tester.use_module(module_id=MODULE_IDX, reserve=False)
 
     # free the module in case it is reserved by others
-    await module.free(False)
+    await module.free(should_free_sub_resources=True)
+    await module.reserve()
+
+    # create port object and reserver the port
+    port = await tester.use_port(module_id=MODULE_IDX, port_id=PORT_IDX, reserve=False)
 
     # reserve the port
     await port.reserve()
 
     # reset port
     await port.reset()
-
 
     #----------------------------------------------
     # Port configuration
@@ -90,6 +90,31 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Configure shadow filter to BASIC mode
     basic_filter = await shadow_filter.use_basic_mode()
     basic_filter_config = await basic_filter.get()
+
+    await basic_filter.set(basic_filter_config)
+    await shadow_filter.enable()
+    await shadow_filter.apply()
+
+    # Configure flow properties
+    flow = port.flows[FLOW_IDX]
+    flow_config = await flow.get()
+    flow_config.comment = "On VLAN 111"
+    await flow.set(config=flow_config)
+
+    # Initialize shadow filter on the flow
+    shadow_filter = flow.shadow_filter
+    await shadow_filter.init()
+    await shadow_filter.clear()
+
+    # Gaussian distribution for impairment Latency & Jitter
+    dist = distributions.latency_jitter.Gaussian(mean=1, sd=1)
+    dist.continuous()
+
+    # Set distribution and start impairment Latency & Jitter
+    latency_jitter_config = await flow.latency_jitter.get()
+    latency_jitter_config.set_distribution(dist)
+    await flow.latency_jitter.start(latency_jitter_config)
+    await flow.latency_jitter.stop(latency_jitter_config)
 
     #------------------
     # Ethernet subfilter
@@ -188,11 +213,40 @@ async def my_awesome_func(stop_event: asyncio.Event):
 
     # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
     layer_xena_subfilter = basic_filter_config.layer_xena.use_tpld()
-    layer_xena_subfilter.off()
     layer_xena_subfilter.exclude()
     layer_xena_subfilter.include()
-    layer_xena_subfilter.configs
-
+    layer_xena_subfilter[0].on(tpld_id=2)       
+    layer_xena_subfilter[0].off()
+    layer_xena_subfilter[1].on(tpld_id=4)       
+    layer_xena_subfilter[1].off()
+    layer_xena_subfilter[2].on(tpld_id=6)       
+    layer_xena_subfilter[2].off()
+    layer_xena_subfilter[3].on(tpld_id=8)       
+    layer_xena_subfilter[3].off()
+    layer_xena_subfilter[4].on(tpld_id=10)       
+    layer_xena_subfilter[4].off()
+    layer_xena_subfilter[5].on(tpld_id=20)       
+    layer_xena_subfilter[5].off()
+    layer_xena_subfilter[6].on(tpld_id=40)       
+    layer_xena_subfilter[6].off()
+    layer_xena_subfilter[7].on(tpld_id=60)       
+    layer_xena_subfilter[7].off()
+    layer_xena_subfilter[8].on(tpld_id=80)       
+    layer_xena_subfilter[8].off()
+    layer_xena_subfilter[9].on(tpld_id=100)       
+    layer_xena_subfilter[9].off()
+    layer_xena_subfilter[10].on(tpld_id=102)       
+    layer_xena_subfilter[10].off()
+    layer_xena_subfilter[11].on(tpld_id=104)       
+    layer_xena_subfilter[11].off()
+    layer_xena_subfilter[12].on(tpld_id=106)       
+    layer_xena_subfilter[12].off()
+    layer_xena_subfilter[13].on(tpld_id=108)       
+    layer_xena_subfilter[13].off()
+    layer_xena_subfilter[14].on(tpld_id=110)       
+    layer_xena_subfilter[14].off()
+    layer_xena_subfilter[15].on(tpld_id=200)       
+    layer_xena_subfilter[15].off()
 
     #------------------
     # Layer Any subfilter
@@ -235,9 +289,23 @@ async def my_awesome_func(stop_event: asyncio.Event):
     extended_filter = await shadow_filter.use_extended_mode()
     extended_filter_config = await extended_filter.get()
 
-    # extended_filter_config.protocol_segments =
+    ethernet = dataset.ProtocolSegement(
+        protocol_type=dataset.ProtocolOption.ETHERNET,
+        value='000001111',
+        mask='1110000',
+    )
+    ipv4_1 = dataset.ProtocolSegement(
+        protocol_type=dataset.ProtocolOption.IP,
+        value='000001111',
+        mask='1110000',
+    )
+    ipv4_2 = dataset.ProtocolSegement(
+        protocol_type=dataset.ProtocolOption.IP,
+        value='000001111',
+        mask='1110000',
+    )
+    extended_filter_config.protocol_segments = (ethernet, ipv4_1, ipv4_2)
 
-    
     await extended_filter.set(extended_filter_config)
     await shadow_filter.enable()
     await shadow_filter.apply()
@@ -317,7 +385,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     await flow.drop.start(drop_config)
     await flow.drop.stop(drop_config)
 
-    #endregion
+    # endregion
 
     #----------------------------------------------
     # Impairment - Misordering
@@ -341,7 +409,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     await flow.misordering.start(misordering_config)
     await flow.misordering.stop(misordering_config)
 
-    #endregion
+    # endregion
 
     #----------------------------------------------
     # Impairment - Latency & Jitter
@@ -394,7 +462,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     await flow.latency_jitter.start(latency_jitter_config)
     await flow.latency_jitter.stop(latency_jitter_config)
 
-    #endregion
+    # endregion
 
     #----------------------------------------------
     # Impairment - Duplication
@@ -469,7 +537,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     await flow.duplication.start(duplication_config)
     await flow.duplication.stop(duplication_config)
 
-    #endregion
+    # endregion
 
     #----------------------------------------------
     # Impairment - Corruption
@@ -548,7 +616,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     await flow.corruption.start(corruption_config)
     await flow.corruption.stop(corruption_config)
 
-    #endregion
+    # endregion
 
     #----------------------------------------------
     # Bandwidth Control - Policer
@@ -572,7 +640,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     await flow.policer.start(policer_config)
     await flow.policer.stop(policer_config)
 
-    #endregion
+    # endregion
 
     #----------------------------------------------
     # Bandwidth Control - Shaper
@@ -597,20 +665,116 @@ async def my_awesome_func(stop_event: asyncio.Event):
     await flow.shaper.start(shaper_config)
     await flow.shaper.stop(shaper_config)
 
-    #endregion
+    # endregion
 
 
+    
     #----------------------------------------------
-    # Statistics
+    # Flow Statistics
     # ---------------------------------------------
-    # region Statistics
+    # region Flow Statistics
 
     rx_total = await flow.statistics.rx.total.get()
+    rx_total.byte_count
+    rx_total.packet_count
+    rx_total.l2_bps
+    rx_total.pps
+
     tx_total = await flow.statistics.tx.total.get()
-    drop = await flow.statistics.total.dropped.get()
+    tx_total.byte_count
+    tx_total.packet_count
+    tx_total.l2_bps
+    tx_total.pps
 
+    flow_drop_total = await flow.statistics.total.dropped.get()
+    flow_drop_total.pkt_drop_count_total
+    flow_drop_total.pkt_drop_count_programmed
+    flow_drop_total.pkt_drop_count_bandwidth
+    flow_drop_total.pkt_drop_count_other
+    flow_drop_total.pkt_drop_ratio_total
+    flow_drop_total.pkt_drop_ratio_programmed
+    flow_drop_total.pkt_drop_ratio_bandwidth
+    flow_drop_total.pkt_drop_ratio_other
 
-    #endregion
+    flow_corrupted_total = await flow.statistics.total.corrupted.get()
+    flow_corrupted_total.fcs_corrupted_pkt_count
+    flow_corrupted_total.fcs_corrupted_pkt_ratio
+    flow_corrupted_total.ip_corrupted_pkt_count
+    flow_corrupted_total.ip_corrupted_pkt_ratio
+    flow_corrupted_total.tcp_corrupted_pkt_count
+    flow_corrupted_total.tcp_corrupted_pkt_ratio
+    flow_corrupted_total.total_corrupted_pkt_count
+    flow_corrupted_total.total_corrupted_pkt_ratio
+    flow_corrupted_total.udp_corrupted_pkt_count
+    flow_corrupted_total.udp_corrupted_pkt_ratio
+
+    flow_delayed_total = await flow.statistics.total.delayed.get()
+    flow_delayed_total.pkt_count
+    flow_delayed_total.ratio
+
+    flow_jittered_total = await flow.statistics.total.jittered.get()
+    flow_jittered_total.pkt_count
+    flow_jittered_total.ratio
+
+    flow_duplicated_total = await flow.statistics.total.duplicated.get()
+    flow_duplicated_total.pkt_count
+    flow_duplicated_total.ratio
+
+    flow_misordered_total = await flow.statistics.total.misordered.get()
+    flow_misordered_total.pkt_count
+    flow_misordered_total.ratio
+
+    await flow.statistics.tx.clear.set()
+    await flow.statistics.rx.clear.set()
+    await flow.statistics.clear.set()
+    
+    # endregion
+
+    #----------------------------------------------
+    # Port Statistics
+    # ---------------------------------------------
+    # region Port Statistics
+    port_drop = await port.config.statistics.dropped.get()
+    port_drop.pkt_drop_count_total
+    port_drop.pkt_drop_count_programmed
+    port_drop.pkt_drop_count_bandwidth
+    port_drop.pkt_drop_count_other
+    port_drop.pkt_drop_ratio_total
+    port_drop.pkt_drop_ratio_programmed
+    port_drop.pkt_drop_ratio_bandwidth
+    port_drop.pkt_drop_ratio_other
+
+    port_corrupted = await port.config.statistics.corrupted.get()
+    port_corrupted.fcs_corrupted_pkt_count
+    port_corrupted.fcs_corrupted_pkt_ratio
+    port_corrupted.ip_corrupted_pkt_count
+    port_corrupted.ip_corrupted_pkt_ratio
+    port_corrupted.tcp_corrupted_pkt_count
+    port_corrupted.tcp_corrupted_pkt_ratio
+    port_corrupted.total_corrupted_pkt_count
+    port_corrupted.total_corrupted_pkt_ratio
+    port_corrupted.udp_corrupted_pkt_count
+    port_corrupted.udp_corrupted_pkt_ratio
+
+    port_delayed = await port.config.statistics.delayed.get()
+    port_delayed.pkt_count
+    port_delayed.ratio
+
+    port_jittered = await port.config.statistics.jittered.get()
+    port_jittered.pkt_count
+    port_jittered.ratio
+
+    port_duplicated = await port.config.statistics.duplicated.get()
+    port_duplicated.pkt_count
+    port_duplicated.ratio
+
+    port_misordered = await port.config.statistics.misordered.get()
+    port_misordered.pkt_count
+    port_misordered.ratio
+
+    await port.config.statistics.clear.set()
+
+    # endregion
 
 async def main() -> None:
     stop_event = asyncio.Event()
