@@ -26,13 +26,34 @@ class TesterManager(ReserveMixin):
             raise InvalidChimeraResourceError('module')
         return module
 
-    async def use_module(self, module_id: int, reserve: bool = True) -> "ModuleManager":
+    async def use_module(self, module_id: int, reserve: bool = False) -> "ModuleManager":
+        """Select and use a module by its index.
+
+        :param module_id: module index
+        :type module_id: int
+        :param reserve: should reserve the module or not, defaults to False
+        :type reserve: bool, optional
+        :return: module manager object
+        :rtype: ModuleManager
+        """
         manager = ModuleManager(self._obtain_module(module_id))
         if reserve:
             await manager.reserve()
         return manager
 
     async def use_port(self, module_id: int, port_id: int, reserve: bool = True) -> "PortManager":
+        """Select and use a port by its index.
+
+        :param module_id: module index
+        :type module_id: int
+        :param port_id: port index
+        :type port_id: int
+        :param reserve: should reserve the port or not, defaults to True
+        :type reserve: bool, optional
+        :raises InvalidChimeraResourceError: the port is not a Chimera port
+        :return: port manager object
+        :rtype: PortManager
+        """
         module = self._obtain_module(module_id)
         port = module.ports.obtain(port_id)
         if not isinstance(port, PortChimera):

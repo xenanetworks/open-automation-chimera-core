@@ -23,7 +23,7 @@ T = TypeVar("T", bound="MainController")
 
 
 class MainController:
-    """MainController - A main class of XOA-Core framework."""
+    """MainController - A main class of XOA Chimera Core framework."""
 
     __slots__ = ("__publisher", "__resources", "suites_library", "__testers", "__is_started")
 
@@ -75,7 +75,22 @@ class MainController:
         """
         await self.__resources.remove_tester(tester_id)
 
-    async def use(self, tester_id: TesterID, username: str = "chimera_core", reserve: bool = False, debug: bool = False) -> "TesterManager":
+    async def use_tester(self, tester_id: TesterID, username: str = "chimera-core", reserve: bool = False, debug: bool = False) -> "TesterManager":
+        """Select and use a tester by its ID.
+
+        :param tester_id: tester identifier
+        :type tester_id: TesterID
+        :param username: username, defaults to "chimera_core"
+        :type username: str, optional
+        :param reserve: should reserve the tester or not, defaults to False
+        :type reserve: bool, optional
+        :param debug: should enable debug mode or not, defaults to False
+        :type debug: bool, optional
+        :raises exception.OnlyAcceptL23TesterError: the tester type is not supported
+        :raises exception.ChimeraModuleNotExistsError: the tester doesn't have a Chimera module
+        :return: tester object
+        :rtype: TesterManager
+        """
         if not (tester_instance := self.__testers.get(username)):
             tester_instance = await self.__resources.get_testers_by_id(
                 testers_ids=[tester_id],
