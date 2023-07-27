@@ -167,3 +167,4 @@ store
 
 .python-version
 store.db
+**/.DS_Store/**
