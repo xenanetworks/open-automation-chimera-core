@@ -7,7 +7,7 @@ def main() -> None:
 
     setuptools.setup(
         name="chimera-core",
-        description="Xena Open Automation - Chimera Core, for network impairment test configuration, integration, and development.",
+        description="Xena OpenAutomation - Chimera Core, for network impairment test configuration, integration, and development.",
         long_description=long_description,
         long_description_content_type="text/markdown",
         author="Frank Chen, Leonard Yu",
@@ -16,7 +16,7 @@ def main() -> None:
         maintainer_email="support@xenanetworks.com",
         url="https://github.com/xenanetworks/chimera-core",
         license='Apache 2.0',
-        install_requires=["xoa_driver>=1.0.12", "pydantic", "loguru"],
+        install_requires=["xoa_driver>=2.1.0", "pydantic", "loguru"],
         classifiers=[
             "Development Status :: 5 - Production/Stable",
             "Intended Audience :: Developers",
