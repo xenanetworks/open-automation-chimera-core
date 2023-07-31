@@ -86,7 +86,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Configure flow properties
     flow = port.flows[FLOW_IDX]
     flow_config = await flow.get()
-    flow_config.comment = "On VLAN 111"
+    flow_config.comment = "Flow description"
     await flow.set(config=flow_config)
 
     # Initialize shadow filter on the flow
