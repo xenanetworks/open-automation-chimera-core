@@ -102,26 +102,6 @@ async def my_awesome_func(stop_event: asyncio.Event):
     await shadow_filter.enable()
     await shadow_filter.apply()
 
-    # Configure flow properties
-    flow = port.flows[FLOW_IDX]
-    flow_config = await flow.get()
-    flow_config.comment = "On VLAN 111"
-    await flow.set(config=flow_config)
-
-    # Initialize shadow filter on the flow
-    shadow_filter = flow.shadow_filter
-    await shadow_filter.init()
-    await shadow_filter.clear()
-
-    # Gaussian distribution for impairment Latency & Jitter
-    dist = distributions.latency_jitter.Gaussian(mean=1, sd=1)
-    dist.continuous()
-
-    # Set distribution and start impairment Latency & Jitter
-    latency_jitter_config = await flow.latency_jitter.get()
-    latency_jitter_config.set_distribution(dist)
-    await flow.latency_jitter.start(latency_jitter_config)
-    await flow.latency_jitter.stop(latency_jitter_config)
 
     #------------------
     # Ethernet subfilter
