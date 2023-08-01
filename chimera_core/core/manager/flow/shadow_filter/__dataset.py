@@ -397,12 +397,44 @@ class ShadowFilterConfigBasicIPv6DESTADDR(ShadowFilterConfigBasicIPv6SRCADDR):
 
 
 @dataclass
+class FilterProtocolL3IPv6TC(ProtocolConfigCommon):
+    mask: Hex = Hex('FC')
+    value: int = 0
+
+    def on(self, value: int = 0, mask: Hex = Hex('FC')) -> None:
+        """Enable th match on this field
+
+        :param value: value of the field, defaults to 0
+        :type value: int, optional
+        :param mask: value of the mask, defaults to FC
+        :type mask: Hex, optional
+        """
+        self.use = enums.OnOff.ON
+        self.value = value
+        self.mask = mask
+
+    def off(self, value: int = 0, mask: Hex = Hex('FC')) -> None:
+        """Disable th match on this field
+
+        :param value: value of the field, defaults to 0
+        :type value: int, optional
+        :param mask: value of the mask, defaults to FC
+        :type mask: Hex, optional
+        """
+        self.use = enums.OnOff.OFF
+        self.value = value
+        self.mask = mask
+
+@dataclass
 class FilterProtocolL3IPv6(FilterConfigCommon):
     src_addr: ShadowFilterConfigBasicIPv6SRCADDR = field(default_factory=ShadowFilterConfigBasicIPv6SRCADDR)
     """IPv6 Source Address Field
     """
     dest_addr: ShadowFilterConfigBasicIPv6DESTADDR = field(default_factory=ShadowFilterConfigBasicIPv6DESTADDR)
     """IPv6 Destination Address Field
+    """
+    tc: FilterProtocolL3IPv6TC = field(default_factory=FilterProtocolL3IPv6TC)
+    """IPv6 Traffic Class field
     """
 
 

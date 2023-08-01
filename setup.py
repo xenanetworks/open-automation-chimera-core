@@ -16,7 +16,7 @@ def main() -> None:
         maintainer_email="support@xenanetworks.com",
         url="https://github.com/xenanetworks/chimera-core",
         license='Apache 2.0',
-        install_requires=["xoa_driver>=2.1.0", "pydantic", "loguru"],
+        install_requires=["xoa_driver>=2.1.3", "pydantic", "loguru"],
         classifiers=[
             "Development Status :: 5 - Production/Stable",
             "Intended Audience :: Developers",

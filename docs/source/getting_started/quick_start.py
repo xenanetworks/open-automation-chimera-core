@@ -167,6 +167,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     layer_3_subfilter.include()
     layer_3_subfilter.src_addr.on(value=IPv6Address("2001::2"), mask=dataset.Hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"))
     layer_3_subfilter.dest_addr.on(value=IPv6Address("2002::2"), mask=dataset.Hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"))
+    layer_3_subfilter.tc.on(value=0, mask=dataset.Hex("FC"))
 
 
     #------------------
@@ -198,7 +199,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Not use basic-mode shadow filter's Layer Xena subfilter
     layer_xena_subfilter = basic_filter_config.layer_xena.use_none()
 
-    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    # Use and configure basic-mode shadow filter's Xena subfilter
     layer_xena_subfilter = basic_filter_config.layer_xena.use_tpld()
     layer_xena_subfilter.exclude()
     layer_xena_subfilter.include()
@@ -241,7 +242,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Not use basic-mode shadow filter's Layer Any subfilter
     layer_any_subfilter = basic_filter_config.layer_any.use_none()
 
-    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    # Use and configure basic-mode shadow filter's Any subfilter
     layer_any_subfilter = basic_filter_config.layer_any.use_any_field()
     layer_any_subfilter.off()
     layer_any_subfilter.exclude()
