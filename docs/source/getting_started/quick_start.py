@@ -199,7 +199,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Not use basic-mode shadow filter's Layer Xena subfilter
     layer_xena_subfilter = basic_filter_config.layer_xena.use_none()
 
-    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    # Use and configure basic-mode shadow filter's Xena subfilter
     layer_xena_subfilter = basic_filter_config.layer_xena.use_tpld()
     layer_xena_subfilter.exclude()
     layer_xena_subfilter.include()
@@ -242,7 +242,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Not use basic-mode shadow filter's Layer Any subfilter
     layer_any_subfilter = basic_filter_config.layer_any.use_none()
 
-    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
+    # Use and configure basic-mode shadow filter's Any subfilter
     layer_any_subfilter = basic_filter_config.layer_any.use_any_field()
     layer_any_subfilter.off()
     layer_any_subfilter.exclude()
