@@ -256,6 +256,11 @@ class ShadowFilterBasic:
                 value=config.layer_3.ipv4.dest_addr.value,
                 mask=config.layer_3.ipv4.dest_addr.mask,
             )
+            yield self.basic_mode.ip.v4.dscp.set(
+                use=config.layer_3.ipv4.dscp.use,
+                value=config.layer_3.ipv4.dscp.value,
+                mask=config.layer_3.ipv4.dscp.mask,
+            )
 
         elif config.layer_3 == enums.L3PlusPresent.IP6:
             yield self.basic_mode.ip.v6.settings.set(use=config.layer_3.ipv6.filter_use, action=config.layer_3.ipv6.match_action)
@@ -268,6 +273,11 @@ class ShadowFilterBasic:
                 use=config.layer_3.ipv6.dest_addr.use,
                 value=config.layer_3.ipv6.dest_addr.value,
                 mask=config.layer_3.ipv6.dest_addr.mask,
+            )
+            yield self.basic_mode.ip.v6.traffic_class.set(
+                use=config.layer_3.ipv6.tc.use,
+                value=config.layer_3.ipv6.tc.value,
+                mask=config.layer_3.ipv6.tc.mask,
             )
 
     def set_layer_4(self, config: ShadowFilterConfigBasic) -> GeneratorToken:

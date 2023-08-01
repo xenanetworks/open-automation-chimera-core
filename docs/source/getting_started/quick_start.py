@@ -167,6 +167,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     layer_3_subfilter.include()
     layer_3_subfilter.src_addr.on(value=IPv6Address("2001::2"), mask=dataset.Hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"))
     layer_3_subfilter.dest_addr.on(value=IPv6Address("2002::2"), mask=dataset.Hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"))
+    layer_3_subfilter.tc.on(value=0, mask=dataset.Hex("FC"))
 
 
     #------------------
