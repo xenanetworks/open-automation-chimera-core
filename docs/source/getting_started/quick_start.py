@@ -1,19 +1,16 @@
 import asyncio
-from functools import partial
-from typing import List
 from ipaddress import IPv4Address, IPv6Address
-from loguru import logger
 
 from chimera_core.controller import MainController
 from chimera_core.types import distributions, enums, dataset
 
-CHASSIS_IP = "10.20.1.252"
+CHASSIS_IP = "87.61.110.118"
 USERNAME = "chimera-core"
-MODULE_IDX = 11
+MODULE_IDX = 2
 PORT_IDX = 0
 FLOW_IDX = 1
 
-async def my_awesome_func(stop_event: asyncio.Event):
+async def my_awesome_func(stop_event: asyncio.Event) -> None:
 
     # create credential object
     credentials = dataset.Credentials(
@@ -59,9 +56,6 @@ async def my_awesome_func(stop_event: asyncio.Event):
     port_config = await port.config.get()
     port_config.comment = "My Chimera Port"
 
-    port_config.set_autoneg_on()
-    port_config.set_autoneg_off()
-
     port_config.set_fcs_error_mode_discard()
     port_config.set_fcs_error_mode_pass()
 
@@ -73,6 +67,9 @@ async def my_awesome_func(stop_event: asyncio.Event):
 
     port_config.set_impairment_off()
     port_config.set_impairment_on()
+
+    port_config.tpld_mode = enums.TPLDMode.NORMAL
+    port_config.tpld_mode = enums.TPLDMode.MICRO
 
     await port.config.set(port_config)
 
@@ -199,7 +196,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Not use basic-mode shadow filter's Layer Xena subfilter
     layer_xena_subfilter = basic_filter_config.layer_xena.use_none()
 
-    # Use and configure basic-mode shadow filter's Xena subfilter
+    # Use and configure basic-mode shadow filter's TPLD subfilter
     layer_xena_subfilter = basic_filter_config.layer_xena.use_tpld()
     layer_xena_subfilter.exclude()
     layer_xena_subfilter.include()
@@ -242,7 +239,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Not use basic-mode shadow filter's Layer Any subfilter
     layer_any_subfilter = basic_filter_config.layer_any.use_none()
 
-    # Use and configure basic-mode shadow filter's Any subfilter
+    # Use and configure basic-mode shadow filter's Layer 4 subfilter (TCP)
     layer_any_subfilter = basic_filter_config.layer_any.use_any_field()
     layer_any_subfilter.off()
     layer_any_subfilter.exclude()
@@ -265,7 +262,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     # Configure flow properties
     flow = port.flows[FLOW_IDX]
     flow_config = await flow.get()
-    flow_config.comment = "On VLAN 111"
+    flow_config.comment = "Flow description"
     await flow.set(config=flow_config)
 
     # Initialize shadow filter on the flow
@@ -279,18 +276,18 @@ async def my_awesome_func(stop_event: asyncio.Event):
 
     ethernet = dataset.ProtocolSegement(
         protocol_type=dataset.ProtocolOption.ETHERNET,
-        value='000001111',
-        mask='1110000',
+        value='00001111',
+        mask='11110000',
     )
     ipv4_1 = dataset.ProtocolSegement(
         protocol_type=dataset.ProtocolOption.IP,
-        value='000001111',
-        mask='1110000',
+        value='00001111',
+        mask='11110000',
     )
     ipv4_2 = dataset.ProtocolSegement(
         protocol_type=dataset.ProtocolOption.IP,
-        value='000001111',
-        mask='1110000',
+        value='00001111',
+        mask='11110000',
     )
     extended_filter_config.protocol_segments = (ethernet, ipv4_1, ipv4_2)
 
@@ -600,6 +597,7 @@ async def my_awesome_func(stop_event: asyncio.Event):
     corruption_config.corruption_type = enums.CorruptionType.IP
     corruption_config.corruption_type = enums.CorruptionType.TCP
     corruption_config.corruption_type = enums.CorruptionType.UDP
+    corruption_config.corruption_type = enums.CorruptionType.BER
     corruption_config.set_distribution(dist)
     await flow.corruption.start(corruption_config)
     await flow.corruption.stop(corruption_config)
