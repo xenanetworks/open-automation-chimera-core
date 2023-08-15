@@ -1,9 +1,8 @@
 from abc import ABC, abstractclassmethod
 from dataclasses import dataclass, field
 from typing import Any, Optional, TypeVar, Union, TYPE_CHECKING
-from loguru import logger
 
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
+from xoa_driver.v2.misc import (
     CLatencyJitterImpairment,
     CDropImpairment,
     CMisorderingImpairment,

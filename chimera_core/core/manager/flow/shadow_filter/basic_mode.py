@@ -1,10 +1,8 @@
 import asyncio
 from itertools import chain
 
-from loguru import logger
 from xoa_driver import utils
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import FilterDefinitionShadow
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
+from xoa_driver.v2.misc import FilterDefinitionShadow, ModeBasic
 
 from chimera_core.types import enums
 from chimera_core.core.manager.__dataset import GeneratorToken
@@ -244,7 +242,7 @@ class ShadowFilterBasic:
 
     def set_layer_3(self, config: ShadowFilterConfigBasic) -> GeneratorToken:
         yield self.basic_mode.l3_use.set(use=config.layer_3.present)
-        if config.layer_3 == enums.L3PlusPresent.IP4:
+        if config.layer_3 == enums.L3Present.IP4:
             yield self.basic_mode.ip.v4.settings.set(use=config.layer_3.ipv4.filter_use, action=config.layer_3.ipv4.match_action)
             yield self.basic_mode.ip.v4.src_address.set(
                 use=config.layer_3.ipv4.src_addr.use,
@@ -257,7 +255,7 @@ class ShadowFilterBasic:
                 mask=config.layer_3.ipv4.dest_addr.mask,
             )
 
-        elif config.layer_3 == enums.L3PlusPresent.IP6:
+        elif config.layer_3 == enums.L3Present.IP6:
             yield self.basic_mode.ip.v6.settings.set(use=config.layer_3.ipv6.filter_use, action=config.layer_3.ipv6.match_action)
             yield self.basic_mode.ip.v6.src_address.set(
                 use=config.layer_3.ipv6.src_addr.use,

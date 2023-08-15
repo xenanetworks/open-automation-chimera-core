@@ -408,14 +408,14 @@ class FilterProtocolL3IPv6(FilterConfigCommon):
 
 @dataclass
 class FilterLayer3:
-    present: enums.L3PlusPresent = enums.L3PlusPresent.NA
+    present: enums.L3Present = enums.L3Present.NA
     ipv4: FilterProtocolL3IPv4 = field(default_factory=FilterProtocolL3IPv4)
     ipv6: FilterProtocolL3IPv6 = field(default_factory=FilterProtocolL3IPv6)
 
     def use_none(self) -> None:
         """Set protocol field to None
         """
-        self.present = enums.L3PlusPresent.NA
+        self.present = enums.L3Present.NA
 
     def use_ipv4(self) -> FilterProtocolL3IPv4:
         """Set protocol field to IPv4
@@ -423,7 +423,7 @@ class FilterLayer3:
         :return: IPv4 field object
         :rtype: FilterProtocolL3IPv4
         """
-        self.present = enums.L3PlusPresent.IP4
+        self.present = enums.L3Present.IP4
         return self.ipv4
 
     def use_ipv6(self) -> FilterProtocolL3IPv6:
@@ -432,7 +432,7 @@ class FilterLayer3:
         :return: IPv6 field object
         :rtype: FilterProtocolL3IPv6
         """
-        self.present = enums.L3PlusPresent.IP6
+        self.present = enums.L3Present.IP6
         return self.ipv6
 
 

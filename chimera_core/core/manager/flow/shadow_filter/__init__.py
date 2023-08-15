@@ -1,10 +1,10 @@
 from typing import Union
 from xoa_driver import enums
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import (
+from xoa_driver.v2.misc import (
     FilterDefinitionShadow,
     ModeExtendedS,
+    ModeBasic,
 )
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ModeBasic
 
 from .basic_mode import ShadowFilterBasic
 from .extended_mode import ShadowFilterExtended
@@ -21,7 +21,7 @@ class ShadowFilterManager:
         await self.filter.initiating.set()
 
     async def use_basic_mode(self) -> "ShadowFilterBasic":
-        """In Basic mode, the flow filters are composed of multiple sub-filters, which match against different protocol layers. 
+        """In Basic mode, the flow filters are composed of multiple sub-filters, which match against different protocol layers.
         Sub-filters are named after the protocol layer at which they are applied.
 
         :return: a basic shadow filter object
@@ -66,8 +66,8 @@ class ShadowFilterManager:
         await self.filter.enable.set(enums.OnOff.OFF)
 
     async def apply(self) -> None:
-        """Transfer all the shadow filter register values to the working registers instantaneously for all flow filter settings, 
-        including all sub-filters in basic mode, so flow filters are always coherent. 
+        """Transfer all the shadow filter register values to the working registers instantaneously for all flow filter settings,
+        including all sub-filters in basic mode, so flow filters are always coherent.
         This allows updating the shadow registers, without the risk of using intermediate filtering values."""
         await self.filter.apply.set()
 
