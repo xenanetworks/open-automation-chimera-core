@@ -4,16 +4,15 @@ from typing import Dict, Generator, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from xoa_driver.v2.ports import PortChimera
-    from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
-        StatisticsTotals
+    from xoa_driver.v2.misc import (
+        StatisticsTotals,
+        CustomDistributions as HLICustomDistributions,
+        CustomDistribution as HLICustomDistribution,
     )
 
 from xoa_driver import utils
 from xoa_driver.enums import OnOff
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.pe_custom_distribution import (
-    CustomDistributions as HLICustomDistributions,
-    CustomDistribution as HLICustomDistribution,
-)
+
 
 from chimera_core.core.manager.__dataset import PortConfig, PortConfigLinkFlap, PortConfigPulseError, CustomDistribution
 from chimera_core.core.manager.__base import ReserveMixin

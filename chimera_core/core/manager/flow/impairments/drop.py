@@ -1,5 +1,5 @@
 
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
+from xoa_driver.v2.misc import (
     CDropImpairment,
 
 )

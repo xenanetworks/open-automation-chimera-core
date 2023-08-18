@@ -12,13 +12,13 @@ from .shadow_filter import ShadowFilterManager
 
 
 if TYPE_CHECKING:
-    from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import CFlow, CPerFlowStats
+    from xoa_driver.v2.misc import ImpairmentFlow, PerImpairmentFlowStats
 
 from .__dataset import FlowConfig
 
 
 class FlowManager:
-    def __init__(self, flow: "CFlow") -> None:
+    def __init__(self, flow: "ImpairmentFlow") -> None:
         self.__flow = flow
         self.shadow_filter = ShadowFilterManager(flow.shadow_filter)
         """
@@ -113,7 +113,7 @@ class FlowManager:
         await self.__flow.comment.set(comment=config.comment)
 
     @property
-    def statistics(self) -> "CPerFlowStats":
+    def statistics(self) -> "PerImpairmentFlowStats":
         """Return the flow statistics
 
         :return: flow statistics
