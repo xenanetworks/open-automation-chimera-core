@@ -1,11 +1,11 @@
 import asyncio
 
 from xoa_driver  import utils
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.shadow import (
+from xoa_driver.v2.misc import (
     FilterDefinitionShadow,
     ModeExtendedS,
+    ProtocolSegment as HLIProtocolSegment,
 )
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.filter_definition.general import ProtocolSegment as HLIProtocolSegment
 
 from .__dataset import (
     ProtocolSegement,

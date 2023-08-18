@@ -3,9 +3,8 @@ from dataclasses import dataclass
 from functools import partialmethod
 from typing import Any, Dict, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union, Protocol
 
-from loguru import logger
 from chimera_core.types import enums
-from xoa_driver.internals.hli_v2.ports.port_l23.chimera.port_emulation import (
+from xoa_driver.v2.misc import (
     CLatencyJitterImpairment,
     CDropImpairment,
     CMisorderingImpairment,
