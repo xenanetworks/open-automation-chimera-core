@@ -17,7 +17,7 @@ The target audience of this document is test specialists who develop and run aut
 
    For complete details of how to use Chimera, go to `Chimera User Manual <https://xenanetworks.com/wp-content/uploads/documentation/tech-doc/ChimeraUserManual.pdf>`_. 
 
-   For detailed technical specifications, go to `Chimera Data Sheet <https://xenanetworks.com/wp-content/uploads/documentation/datasheets/Chimera-datasheet.pdf>`_. 
+   For detailed technical specifications, go to `Chimera Data Sheet <https://xenanetworks.com/chimera-network-emulator/#documentation>`_. 
 
 -----------
 
